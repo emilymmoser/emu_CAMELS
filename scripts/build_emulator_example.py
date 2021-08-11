@@ -1,6 +1,6 @@
 import helper_functions as fs
 
-home='./Emulator_profiles/' #point to your profiles
+home='./emulator_profiles/' #point to your profiles
 suite='SIMBA'
 vary_str='ASN1'
 prof='rho_mean' #rho_mean,rho_med,pth_mean,pth_med

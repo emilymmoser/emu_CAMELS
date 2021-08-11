@@ -23,4 +23,4 @@ Specify the suite, feedback parameter, and profile type in lines 3-6.
 
 I added an interpolation class to *ostrich* that you can see being used in helper_functions.py, in the build_emulator_3d function. If you run this example as is you'll get an error message saying something like "ostrich.interpolate doesn't have class RbfInterpolator". If we go this route of you running the code yourself, I can send you the interpolation class to add to the file in *ostrich*. 
 
-Eventually I'll need to make a pull request for this, but the grad student who wrote it is on leave right now so we're kinda stuck. It's not a huge deal though, just a few additional lines.
+Eventually I'll need to make a pull request for this, but the grad student who wrote it is on leave right now so we're kinda stuck. It's not a huge deal though, just a few additional lines. 

@@ -8,11 +8,9 @@ The emulator is constructed using the profiles found in emulator_profiles (but t
 Dependencies:
 
 numpy, scipy
-
 ostrich - should download its own dependencies when cloning the repo
 
 Example:
 
 Run the example script, scripts/build_emulator_example.py
-
 Specify the suite, feedback parameter, and profile type in lines 3-6.

@@ -15,3 +15,8 @@ samples=fs.cartesian_prod(vary,z,mass)
 nsamp=samples.shape[0]
 
 samples,x,y,emulator=fs.build_emulator_3D(home,suite,vary_str,prof,func_str)
+
+#now we can get an emulated profile with different parameters
+params=[[0.7,0.2,12.7]] #the order here is important- A, then z, then M
+emulated=emulator(params)
+

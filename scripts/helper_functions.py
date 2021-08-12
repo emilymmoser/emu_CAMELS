@@ -10,10 +10,11 @@ z_tng=np.array([0.00000,0.04852,0.10005,0.15412,0.21012,0.26959,0.33198,0.39661,
 snap=['033','032','031','030','029','028','027','026','025','024']
 AAGN1=ASN1
 AAGN2=ASN2
-#mass=np.array([12.05,12.15,12.25,12.35,12.5,12.7,13.0])
-#mass_str=np.array(['12-12.1','12.1-12.2','12.2-12.3','12.3-12.4','12.4-12.6','12.6-12.8','12.8-13.2'])
 mass=np.array([12.1,12.3,12.6,13.])
 mass_str=np.array(['12-12.2','12.2-12.4','12.4-12.8','12.8-13.2'])
+
+usecols_dict={'rho_mean':(0,1,2,3,4),'rho_med':(0,5,2,3,4),'pth_mean':(0,6,7,8,9),'pth_med':(0,10,7,8,9),'metal_mean':(0,11,12,13,14),'metal_med':(0,15,12,13,14),'temp_mean':(0,16,17,18,19),'temp_med':(0,20,17,18,19)}
+ylabel_dict={'rho_mean':r'$\rho_{mean} (g/cm^3)$','rho_med':r'$\rho_{med} (g/cm^3)$','pth_mean':r'$P_{th,mean} (g/cm/s^2)$','pth_med':r'$P_{th,med} (g/cm/s^2)$','metal_mean':r'$\frac{Z_{mean}}{Z_{tot}}$','metal_med':r'$\frac{Z_{med}}{Z_{tot}}$','temp_mean':r'$T_{gas,mean} (K)$','temp_med':r'$T_{gas,med} (K)$'}
 
 def cgs_units(prof,arr):
     if prof=='rho_mean' or prof=='rho_med':
@@ -52,18 +53,8 @@ def choose_vary(vary_str):
     return vary,sims
 
 def choose_profile(prof):
-    if prof=='rho_mean':
-        usecols=(0,1,2,3,4)
-        ylabel=r'$\rho_{mean} (g/cm^3)$'
-    elif prof=='pth_mean':
-        usecols=(0,5,6,7,8)
-        ylabel=r'$P_{th,mean} (g/cm/s^2)$'
-    elif prof=='rho_med':
-        usecols=(0,9,2,3,4)
-        ylabel=r'$\rho_{med} (g/cm^3)$'
-    elif prof=='pth_med':
-        usecols=(0,10,6,7,8)
-        ylabel=r'$P_{th,med} (g/cm/s^2)$'
+    usecols=usecols_dict[prof]
+    ylabel=ylabel_dict[prof]
     return usecols,ylabel
 
 def load_profiles_2D(usecols,home,suite,sims,snap,mass_str,prof):
@@ -94,7 +85,9 @@ def load_profiles_3D(usecols,home,suite,sims,snap,mass_str,prof):
             for m in np.arange(len(mass)):
                 f=home+suite+'/'+suite+'_'+sims[s]+'_'+snap[n]+'_uw_'+mass_str[m]+'.txt'
                 x,yi,errupi,errlowi,stddevi=np.loadtxt(f,usecols=usecols,unpack=True)
-                yi,errupi,errlowi=cgs_units(prof,yi),cgs_units(prof,errupi),cgs_units(prof,errlowi)
+
+                if prof[:2]=='rho' or prof[:2]=='pth':
+                    yi,errupi,errlowi=cgs_units(prof,yi),cgs_units(prof,errupi),cgs_units(prof,errlowi)
                 y.append(np.log10(yi))
                 errup.append(np.log10(errupi))
                 errlow.append(np.log10(errlowi))

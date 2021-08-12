@@ -20,7 +20,7 @@ Run the example script, scripts/build_emulator_example.py
 Specify the suite, feedback parameter, and profile type in lines 3-6.
 
 ## A few additional notes
-1. The input masses are in log, so if you want to emulate a profile of mass 1e14$M_\odot$, you would input it as 14.
+1. The input masses are in log, so if you want to emulate a profile of mass <img src="https://latex.codecogs.com/svg.latex?\Large&space;1e14$M_\odot$" />, you would input it as 14.
 
 2. The current profiles cover the radial range $0.01 \leq R (Mpc) \leq 10$. This can also be seen by looking at the txt files in the emulator_profiles directory.
 

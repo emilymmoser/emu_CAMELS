@@ -86,7 +86,7 @@ def load_profiles_3D(usecols,home,suite,sims,snap,mass_str,prof):
                 f=home+suite+'/'+suite+'_'+sims[s]+'_'+snap[n]+'_uw_'+mass_str[m]+'.txt'
                 x,yi,errupi,errlowi,stddevi=np.loadtxt(f,usecols=usecols,unpack=True)
 
-                if prof[:2]=='rho' or prof[:2]=='pth':
+                if prof[:3]=='rho' or prof[:3]=='pth':
                     yi,errupi,errlowi=cgs_units(prof,yi),cgs_units(prof,errupi),cgs_units(prof,errlowi)
                 y.append(np.log10(yi))
                 errup.append(np.log10(errupi))

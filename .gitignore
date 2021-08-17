@@ -1,0 +1,6 @@
+__pycache__
+.DS_Store
+ostrich
+*pdf
+*png
+*hdf5

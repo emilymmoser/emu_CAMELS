@@ -1,3 +1,4 @@
+import sys; sys.path.append("ostrich")
 import numpy as np
 import ostrich.emulate
 import ostrich.interpolate

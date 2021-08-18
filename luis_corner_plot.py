@@ -45,7 +45,7 @@ ster2sqdeg = 3282.80635
 ster2sqarcmin = ster2sqdeg * 3600.0
 ster2sqarcsec = ster2sqdeg * 3600.0 * 3600.0
 
-xray_redshift = 0.01
+#p_to_y = pe_factor * sigma_T / m_e_keV # TODO get values
 
 
 # Cache emulators to save time
@@ -102,7 +102,7 @@ xray = xray_emissivity.XrayEmissivity()
 xray.read_emissivity_table('etable_05_2keV_cnts.hdf5')
 eff_area = 2000.0 #cm^2
 
-def compute_xray_profiles(radii, density_profile, temperature_profile, metallicity_profile):
+def compute_xray_profiles(halo_redshift, radii, density_profile, temperature_profile, metallicity_profile):
     np_xray_emissivity = xray.return_interpolated_emissivity(
         temperature_profile,
         metallicity_profile
@@ -114,18 +114,16 @@ def compute_xray_profiles(radii, density_profile, temperature_profile, metallici
 
     np_xray_emissivity *= ne * nH * eff_area
              
-    xray_redshift = 0.01
-   
     # Project X-ray emmissivity to get X-ray surface brightness
     np_xsb = abel_projection(radii * kpc , np_xray_emissivity ) / (4.0*math.pi)
     
     # account for redshift dimming, change units from per steradians to per arcmin^2
-    np_xsb *= 1.0 /(1+xray_redshift)**4.0 /ster2sqarcmin 
+    np_xsb *= 1.0 /(1+halo_redshift)**4.0 /ster2sqarcmin 
 
     return (np_xray_emissivity, np_xsb)
 
 
-radii = np.array([
+RADII = np.array([
     1.633852131856735820e-02,
     2.839309588794570668e-02,
     4.934154556483250076e-02,
@@ -163,7 +161,8 @@ def get_xsb_for_parameter(A_name, simulation_suite, A_value, z, M200c):
 
 
     emissivity_profile, xsb_profile = compute_xray_profiles(
-        radii,
+        z,
+        RADII,
         np.array([density_profile]),
         np.array([temperature_profile]),
         np.array([metallicity_profile]),
@@ -173,6 +172,36 @@ def get_xsb_for_parameter(A_name, simulation_suite, A_value, z, M200c):
     xsb_profile = xsb_profile[0]
 
     return xsb_profile
+
+
+def get_y_for_parameter(A_name, simulation_suite, A_value, z, M200c):
+    # Build emulator
+    print("Creating pressure emulator...")
+    pressure_emulator = build_emulator("PRESSURE TODO", A_name, simulation_suite)
+
+    # Create profiles from emulator
+    halo_emulate_param = [[A_value, z, M200c]]
+    
+    pressure_profile = np.power(10.0, pressure_emulator([halo_emulate_param])).flatten()
+
+    # Convert profile from pressure to y
+    y_profile = p_to_y * pressure_profile * Mpc # TODO get p_to_y
+    y_profile = abel_projection(RADII * kpc, y_profile)
+
+    return y_profile
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ##### Fisher Matrices and Corner Plots
@@ -235,15 +264,14 @@ def fisher_matrix_xsb(radii, params, delta=1e-2, instrument_resolution_arcmin=0.
 
 
 # Which feedback parameters to vary
-#feedback_parameters = ["AAGN1", "AAGN2", "ASN1", "ASN2"]
-feedback_parameters = ["AAGN2", "ASN2"] # For testing, only include 2 of them
+feedback_parameters = ["AAGN1", "AAGN2", "ASN1", "ASN2"]
 
 log_halo_mass = 13
 halo_redshift = 0.1
 simulation_suite = "SIMBA"
 
 f = fisher_matrix_xsb(
-    radii,
+    RADII,
     feedback_parameters,
     delta=1e-2,
     instrument_sensitivity=1e-9,
@@ -268,6 +296,6 @@ fig = corner.corner(
 
 fig.suptitle("$log_{10} (M_{200c} / M_{\odot}) = $" + f"{log_halo_mass}, z = {halo_redshift}, sim = {simulation_suite}")
 
-#plt.savefig("./test_corner_plot.pdf")
+#plt.savefig(f"./corner_plot_Mass{log_halo_mass}Redshift{halo_redshift}_{simulation_suite}.pdf")
 
 plt.show()

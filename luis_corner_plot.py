@@ -3,6 +3,7 @@ import corner
 import math
 from matplotlib import pyplot as plt
 import numpy as np
+import scipy
 from scipy.interpolate import interp1d
 from scipy import integrate
 
@@ -13,6 +14,8 @@ import xray_emissivity
 from colossus.cosmology import cosmology
 from colossus.halo import mass_defs, concentration
 COSMO = cosmology.setCosmology('planck18')
+
+FIDUCIAL_FEEDBACK_PARAMETER = 1 # Fiducial value for AGN1/2, SN1/2
 
 HUBBLE = 0.6711
 Msun = 1.99e33
@@ -174,8 +177,6 @@ def get_xsb_for_parameter(A_name, simulation_suite, A_value, z, M200c):
 
 ##### Fisher Matrices and Corner Plots
 def fisher_matrix_xsb(radii, params, delta=1e-2, instrument_resolution_arcmin=0.4, instrument_sensitivity=2e-3**2, log_halo_mass=13, halo_redshift=0.1, simulation_suite="SIMBA") :
-    """
-    TODO use this for the correct radial bins
     # Determine var based on instrument responses
     DA = COSMO.angularDiameterDistance(halo_redshift) / HUBBLE # Mpc
     cvir = concentration.concentration(10**log_halo_mass, 'vir', halo_redshift, model='diemer15')
@@ -188,28 +189,29 @@ def fisher_matrix_xsb(radii, params, delta=1e-2, instrument_resolution_arcmin=0.
     nbins = int(2*theta_200m / instrument_resolution_arcmin) + 1
     radial_arcmin_range = np.linspace(instrument_resolution_arcmin, theta_500c, nbins)
     rad_bins = (radial_arcmin_range/ 60.) * (math.pi / 180.0) * DA # Mpc
-    # Note that radii is in kpc
-    print(rad_bins)
-    print(radii)
+    rad_bins *= 1000 # Convert from Mpc to kpc
+
     var = np.full(rad_bins.shape,  instrument_sensitivity)
-    """
-    var = np.full(radii.shape, instrument_sensitivity)
 
     # Initialize empty Fisher matrix and gradient matrix
     f = np.zeros([len(params), len(params)], dtype=np.float64)
-    grad = np.zeros([len(params), len(radii)], dtype=np.float64)
+    grad = np.zeros([len(params), len(rad_bins)], dtype=np.float64)
 
     for ind, param in enumerate(params):
-        param_value = 1 # TODO determine based on feedback parameter
-        param_less = (1.0 - delta)*param_value
-        param_more = (1.0 + delta)*param_value
+        param_value = FIDUCIAL_FEEDBACK_PARAMETER
+        param_less = (1.0 - delta) * param_value
+        param_more = (1.0 + delta) * param_value
 
         h = 2.0*delta*param_value
 
         pro_less = get_xsb_for_parameter(param, simulation_suite, param_less, halo_redshift, log_halo_mass)
         pro_more = get_xsb_for_parameter(param, simulation_suite, param_more, halo_redshift, log_halo_mass)
 
-        diff = (pro_more-pro_less)/h
+        # Interpolate profiles to rad_bins
+        pro_less_interp = interp1d(radii, pro_less, fill_value="extrapolate")(rad_bins)
+        pro_more_interp = interp1d(radii, pro_more, fill_value="extrapolate")(rad_bins)
+
+        diff = (pro_more_interp - pro_less_interp)/h
 
         grad[ind,:] = diff
 
@@ -218,7 +220,7 @@ def fisher_matrix_xsb(radii, params, delta=1e-2, instrument_resolution_arcmin=0.
 
             fij = 0.0
 
-            for il, _ in enumerate(radii) :
+            for il, _ in enumerate(rad_bins) :
                 fij += (grad[ind1,il]*grad[ind2,il]) / var[il]
 
                 if fij == 0.0:
@@ -233,9 +235,22 @@ def fisher_matrix_xsb(radii, params, delta=1e-2, instrument_resolution_arcmin=0.
 
 
 # Which feedback parameters to vary
-feedback_parameters = ["AAGN1", "AAGN2", "ASN1", "ASN2"]
+#feedback_parameters = ["AAGN1", "AAGN2", "ASN1", "ASN2"]
+feedback_parameters = ["AAGN2", "ASN2"] # For testing, only include 2 of them
 
-f = fisher_matrix_xsb(radii, feedback_parameters)
+log_halo_mass = 13
+halo_redshift = 0.1
+simulation_suite = "SIMBA"
+
+f = fisher_matrix_xsb(
+    radii,
+    feedback_parameters,
+    delta=1e-2,
+    instrument_sensitivity=1e-9,
+    log_halo_mass=log_halo_mass,
+    halo_redshift=halo_redshift,
+    simulation_suite=simulation_suite
+)
 
 # Make corner plot
 mean = np.ones(len(feedback_parameters))
@@ -244,14 +259,15 @@ print(covariance)
 
 chain = np.random.multivariate_normal(mean, covariance, size=10000)
 
-corner.corner(
+fig = corner.corner(
     chain,
     labels=feedback_parameters,
     quantiles=[0.16, 0.5, 0.84],
     show_titles=True,
-    #title_kwargs={"fontsize": 12},
 )
 
-plt.savefig("./corner_plot.pdf")
+fig.suptitle("$log_{10} (M_{200c} / M_{\odot}) = $" + f"{log_halo_mass}, z = {halo_redshift}, sim = {simulation_suite}")
+
+#plt.savefig("./test_corner_plot.pdf")
 
 plt.show()

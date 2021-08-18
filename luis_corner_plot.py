@@ -26,6 +26,9 @@ mu = 0.59
 X_H = 0.76
 mp = 1.67e-24 # grams
 me = 9.1 * 10**(-28) # grams
+me_kev = 510.9989461 # in keV
+
+Tcmb = 2.73 # Kelvin
 
 c = 3e8 # m / s
 
@@ -45,7 +48,8 @@ ster2sqdeg = 3282.80635
 ster2sqarcmin = ster2sqdeg * 3600.0
 ster2sqarcsec = ster2sqdeg * 3600.0 * 3600.0
 
-#p_to_y = pe_factor * sigma_T / m_e_keV # TODO get values
+pe_factor = (2.0*X_H+2.0)/(5.0*X_H+3.0) # conversion factor from gas pressure to electron pressure
+p_to_y = pe_factor * (sigma_thomson * 1e4) / me_kev
 
 
 # Cache emulators to save time
@@ -139,7 +143,7 @@ RADII = np.array([
     1.239403588140144663e+01,
 ]) * 1e3 # Convert from Mpc to kpc
 
-def get_xsb_for_parameter(A_name, simulation_suite, A_value, z, M200c):
+def get_xsb_for_parameter(A_name, simulation_suite, A_value, z, log_M200c):
     # Build emulators
     print("Creating density emulator...")
     density_emulator = build_emulator("rho_med", A_name, simulation_suite)
@@ -149,7 +153,7 @@ def get_xsb_for_parameter(A_name, simulation_suite, A_value, z, M200c):
     metallicity_emulator = build_emulator("metal_med", A_name, simulation_suite)
 
     # Create profiles from emulator
-    halo_emulate_param = [[A_value, z, M200c]]
+    halo_emulate_param = [[A_value, z, log_M200c]]
     
     density_profile = np.power(10.0, density_emulator([halo_emulate_param])).flatten()
     temperature_profile = np.power(10.0, temperature_emulator([halo_emulate_param])).flatten()
@@ -173,23 +177,22 @@ def get_xsb_for_parameter(A_name, simulation_suite, A_value, z, M200c):
 
     return xsb_profile
 
-
-def get_y_for_parameter(A_name, simulation_suite, A_value, z, M200c):
+# TODO double check pressure and y units
+def get_y_for_parameter(A_name, simulation_suite, A_value, z, log_M200c):
     # Build emulator
     print("Creating pressure emulator...")
-    pressure_emulator = build_emulator("PRESSURE TODO", A_name, simulation_suite)
+    pressure_emulator = build_emulator("pth_med", A_name, simulation_suite)
 
     # Create profiles from emulator
-    halo_emulate_param = [[A_value, z, M200c]]
+    halo_emulate_param = [[A_value, z, log_M200c]]
     
     pressure_profile = np.power(10.0, pressure_emulator([halo_emulate_param])).flatten()
 
     # Convert profile from pressure to y
-    y_profile = p_to_y * pressure_profile * Mpc # TODO get p_to_y
-    y_profile = abel_projection(RADII * kpc, y_profile)
+    y_profile = p_to_y * pressure_profile * Mpc
+    y_profile = abel_projection(RADII * kpc, np.array([y_profile]))
 
-    return y_profile
-
+    return y_profile[0]
 
 
 
@@ -205,7 +208,7 @@ def get_y_for_parameter(A_name, simulation_suite, A_value, z, M200c):
 
 
 ##### Fisher Matrices and Corner Plots
-def fisher_matrix_xsb(radii, params, delta=1e-2, instrument_resolution_arcmin=0.4, instrument_sensitivity=2e-3**2, log_halo_mass=13, halo_redshift=0.1, simulation_suite="SIMBA") :
+def fisher_matrix(radii, params, get_profile_function=get_xsb_for_parameter, delta=1e-2, instrument_resolution_arcmin=0.4, instrument_sensitivity=2e-3**2, log_halo_mass=13, halo_redshift=0.1, simulation_suite="SIMBA") :
     # Determine var based on instrument responses
     DA = COSMO.angularDiameterDistance(halo_redshift) / HUBBLE # Mpc
     cvir = concentration.concentration(10**log_halo_mass, 'vir', halo_redshift, model='diemer15')
@@ -233,8 +236,8 @@ def fisher_matrix_xsb(radii, params, delta=1e-2, instrument_resolution_arcmin=0.
 
         h = 2.0*delta*param_value
 
-        pro_less = get_xsb_for_parameter(param, simulation_suite, param_less, halo_redshift, log_halo_mass)
-        pro_more = get_xsb_for_parameter(param, simulation_suite, param_more, halo_redshift, log_halo_mass)
+        pro_less = get_profile_function(param, simulation_suite, param_less, halo_redshift, log_halo_mass)
+        pro_more = get_profile_function(param, simulation_suite, param_more, halo_redshift, log_halo_mass)
 
         # Interpolate profiles to rad_bins
         pro_less_interp = interp1d(radii, pro_less, fill_value="extrapolate")(rad_bins)
@@ -266,23 +269,59 @@ def fisher_matrix_xsb(radii, params, delta=1e-2, instrument_resolution_arcmin=0.
 # Which feedback parameters to vary
 feedback_parameters = ["AAGN1", "AAGN2", "ASN1", "ASN2"]
 
+# Configurations for the different surveys
+configurations = {
+    "eROSITA": {
+        "get_profile_function": get_xsb_for_parameter,
+        "resolution_arcmin": 0.4,
+        "sensitivity": 1e-9,
+    },
+    "CMB-S4-deep": {
+        "get_profile_function": get_y_for_parameter,
+        "resolution_arcmin": 1.0,
+        "sensitivity": (3.07e-6/Tcmb)**2,
+    },
+    "CMB-S4-wide": {
+        "get_profile_function": get_y_for_parameter,
+        "resolution_arcmin": 0.8,
+        "sensitivity": (1.67e-5/Tcmb)**2,
+    },
+    "CMB-HD": {
+        "get_profile_function": get_y_for_parameter,
+        "resolution_arcmin": 0.15,
+        "sensitivity": (2.7e-6/Tcmb)**2,
+    },
+}
+
+# Select desired survey
+SURVEY = "CMB-S4-deep"
+
+# Select desired halo parameters and simulation suite
 log_halo_mass = 13
 halo_redshift = 0.1
 simulation_suite = "SIMBA"
 
-f = fisher_matrix_xsb(
+# Compute Fisher matrix
+fisher = fisher_matrix(
     RADII,
     feedback_parameters,
     delta=1e-2,
-    instrument_sensitivity=1e-9,
+    get_profile_function=configurations[SURVEY]["get_profile_function"],
+    instrument_resolution_arcmin=configurations[SURVEY]["resolution_arcmin"],
+    instrument_sensitivity=configurations[SURVEY]["sensitivity"],
     log_halo_mass=log_halo_mass,
     halo_redshift=halo_redshift,
     simulation_suite=simulation_suite
 )
 
+# Correction for CMB Fisher matrices
+# TODO understand why this additional term is added, and whether we need it
+if "CMB" in SURVEY:
+    fisher += np.eye(len(feedback_parameters)) * 1e-12
+
 # Make corner plot
 mean = np.ones(len(feedback_parameters))
-covariance = np.linalg.inv(f)
+covariance = np.linalg.inv(fisher)
 print(covariance)
 
 chain = np.random.multivariate_normal(mean, covariance, size=10000)
@@ -294,7 +333,7 @@ fig = corner.corner(
     show_titles=True,
 )
 
-fig.suptitle("$log_{10} (M_{200c} / M_{\odot}) = $" + f"{log_halo_mass}, z = {halo_redshift}, sim = {simulation_suite}")
+fig.suptitle(SURVEY + " $log_{10} (M_{200c} / M_{\odot}) = $" + f"{log_halo_mass}, z = {halo_redshift}, sim = {simulation_suite}")
 
 #plt.savefig(f"./corner_plot_Mass{log_halo_mass}Redshift{halo_redshift}_{simulation_suite}.pdf")
 

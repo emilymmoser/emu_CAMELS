@@ -1,11 +1,10 @@
-from numpy.core.fromnumeric import var
 import corner
 import math
 from matplotlib import pyplot as plt
 import numpy as np
-import scipy
 from scipy.interpolate import interp1d
 from scipy import integrate
+from astropy import units
 
 from scripts import helper_functions as fs
 
@@ -49,7 +48,7 @@ ster2sqarcmin = ster2sqdeg * 3600.0
 ster2sqarcsec = ster2sqdeg * 3600.0 * 3600.0
 
 pe_factor = (2.0*X_H+2.0)/(5.0*X_H+3.0) # conversion factor from gas pressure to electron pressure
-p_to_y = pe_factor * (sigma_thomson * 1e4) / me_kev
+p_to_y = pe_factor * (sigma_thomson * 1e4) / me_kev # cm^2 / keV
 
 
 # Cache emulators to save time
@@ -175,9 +174,20 @@ def get_xsb_for_parameter(A_name, simulation_suite, A_value, z, log_M200c):
     emissivity_profile = emissivity_profile[0]
     xsb_profile = xsb_profile[0]
 
+    print("XSB profile!")
+    print(xsb_profile)
+    print("Done with XSB profile!")
+
     return xsb_profile
 
-# TODO double check pressure and y units
+# NOTE: pressure: erg * cm^-3 (number density * kT)
+# Order of magnitude estimation:
+# y ~ \sigma_T/(m_e c^2) \int n_e kT dl
+# In the centers of halos, n_e ~ 0.1 cm^-3, kT ~ 0.1 keV for 1e14 Msun,
+# size of cluster dl ~ Mpc. \sigma_T = 6.25e-25 cm^2, electron rest mass m_e c^2 ~  511 keV.
+# You can scale kT with mass kT ~ M^{2/3}
+# y ~ (6.25e-25 cm^2 / 511 keV) * 0.1cm^-3 * 0.1 keV * 1 Mpc ~ 3.7e-5 (dimensionless) for M ~ 1e14
+# So for M ~ 1e13, kT ~ 0.1 * (1e13 / 1e14)^2 ~ 0.001 ~ 1e-3 keV => y ~ 3.7e-7
 def get_y_for_parameter(A_name, simulation_suite, A_value, z, log_M200c):
     # Build emulator
     print("Creating pressure emulator...")
@@ -186,22 +196,20 @@ def get_y_for_parameter(A_name, simulation_suite, A_value, z, log_M200c):
     # Create profiles from emulator
     halo_emulate_param = [[A_value, z, log_M200c]]
     
-    pressure_profile = np.power(10.0, pressure_emulator([halo_emulate_param])).flatten()
+    pressure_profile = np.power(10.0, pressure_emulator([halo_emulate_param])).flatten() # erg * cm^-3
 
     # Convert profile from pressure to y
-    y_profile = p_to_y * pressure_profile * Mpc
-    y_profile = abel_projection(RADII * kpc, np.array([y_profile]))
+    y_profile = p_to_y * pressure_profile # (cm^2 / keV) * (erg / cm^3)
+    y_profile = abel_projection(RADII * kpc, np.array([y_profile])) # Multiplies by centimeter
+
+    y_profile = y_profile * units.centimeter * (units.centimeter**2 / units.kiloelectronvolt) * (units.erg / units.centimeter**3)
+    y_profile = y_profile.to(1)
+
+    print("y profile!")
+    print(y_profile)
+    print("done with y profile!")
 
     return y_profile[0]
-
-
-
-
-
-
-
-
-
 
 
 
@@ -275,65 +283,93 @@ configurations = {
         "get_profile_function": get_xsb_for_parameter,
         "resolution_arcmin": 0.4,
         "sensitivity": 1e-9,
+        "color": "blue",
+        "show": True,
     },
     "CMB-S4-deep": {
         "get_profile_function": get_y_for_parameter,
         "resolution_arcmin": 1.0,
-        "sensitivity": (3.07e-6/Tcmb)**2,
+        "sensitivity": (3.07e-6/Tcmb)**2 / 20000,
+        "color": "orange",
+        "show": False,
     },
     "CMB-S4-wide": {
         "get_profile_function": get_y_for_parameter,
         "resolution_arcmin": 0.8,
-        "sensitivity": (1.67e-5/Tcmb)**2,
+        "sensitivity": (1.67e-5/Tcmb)**2 / 20000,
+        "color": "green",
+        "show": False,
     },
     "CMB-HD": {
         "get_profile_function": get_y_for_parameter,
         "resolution_arcmin": 0.15,
-        "sensitivity": (2.7e-6/Tcmb)**2,
+        "sensitivity": (2.7e-6/Tcmb)**2 / 20000,
+        "color": "red",
+        "show": False,
     },
 }
 
-# Select desired survey
-SURVEY = "CMB-S4-deep"
-
 # Select desired halo parameters and simulation suite
 log_halo_mass = 13
-halo_redshift = 0.1
-simulation_suite = "SIMBA"
+halo_redshift = 0.5
+simulation_suite = "IllustrisTNG"
 
-# Compute Fisher matrix
-fisher = fisher_matrix(
-    RADII,
-    feedback_parameters,
-    delta=1e-2,
-    get_profile_function=configurations[SURVEY]["get_profile_function"],
-    instrument_resolution_arcmin=configurations[SURVEY]["resolution_arcmin"],
-    instrument_sensitivity=configurations[SURVEY]["sensitivity"],
-    log_halo_mass=log_halo_mass,
-    halo_redshift=halo_redshift,
-    simulation_suite=simulation_suite
-)
+# Plot contours for all surveys
+fig = None
 
-# Correction for CMB Fisher matrices
-# TODO understand why this additional term is added, and whether we need it
-if "CMB" in SURVEY:
-    fisher += np.eye(len(feedback_parameters)) * 1e-12
+for survey in configurations.keys():
+    if not configurations[survey]["show"]:
+        continue
 
-# Make corner plot
-mean = np.ones(len(feedback_parameters))
-covariance = np.linalg.inv(fisher)
-print(covariance)
+    # Compute Fisher matrix
+    fisher = fisher_matrix(
+        RADII,
+        feedback_parameters,
+        delta=1e-2,
+        get_profile_function=configurations[survey]["get_profile_function"],
+        instrument_resolution_arcmin=configurations[survey]["resolution_arcmin"],
+        instrument_sensitivity=configurations[survey]["sensitivity"],
+        log_halo_mass=log_halo_mass,
+        halo_redshift=halo_redshift,
+        simulation_suite=simulation_suite
+    )
 
-chain = np.random.multivariate_normal(mean, covariance, size=10000)
+    # Correction for CMB Fisher matrices
+    # TODO understand why this additional term is added, and whether we need it
+    if "CMB" in survey:
+        fisher += np.eye(len(feedback_parameters)) * 1e-12
 
-fig = corner.corner(
-    chain,
-    labels=feedback_parameters,
-    quantiles=[0.16, 0.5, 0.84],
-    show_titles=True,
-)
+    # Make corner plot
+    mean = np.ones(len(feedback_parameters))
+    covariance = np.linalg.inv(fisher)
 
-fig.suptitle(SURVEY + " $log_{10} (M_{200c} / M_{\odot}) = $" + f"{log_halo_mass}, z = {halo_redshift}, sim = {simulation_suite}")
+    chain = np.random.multivariate_normal(mean, covariance, size=10000)
+    if fig is None:
+        fig = corner.corner(
+            chain,
+            labels=feedback_parameters,
+            quantiles=[0.16, 0.5, 0.84],
+            show_titles=False, # Show titles with mean and errors on each parameter
+            plot_datapoints=False, # Show all of the individual data points from the sampled chain
+            plot_density=False, # Show 2D histogram-like square bins
+            plot_contours=True, # Show sigma contours
+            color=configurations[survey]["color"],
+        )
+    else:
+        corner.corner(
+            chain,
+            labels=feedback_parameters,
+            quantiles=[0.16, 0.5, 0.84],
+            show_titles=False, # Show titles with mean and errors on each parameter
+            plot_datapoints=False, # Show all of the individual data points from the sampled chain
+            plot_density=False, # Show 2D histogram-like square bins
+            plot_contours=True, # Show sigma contours
+            fig=fig,
+            color=configurations[survey]["color"],
+        )
+        
+
+fig.suptitle(f"CAMELS ({simulation_suite}), " + "$log_{10} (M_{200c} / M_{\odot}) = $" + f"{log_halo_mass}, z = {halo_redshift}")
 
 #plt.savefig(f"./corner_plot_Mass{log_halo_mass}Redshift{halo_redshift}_{simulation_suite}.pdf")
 

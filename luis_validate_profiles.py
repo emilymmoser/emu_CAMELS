@@ -1,10 +1,11 @@
-from numpy.core.fromnumeric import var
 import corner
 import math
 from matplotlib import pyplot as plt
+from matplotlib.patches import Patch
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy import integrate
+from astropy import units
 
 from scripts import helper_functions as fs
 
@@ -13,6 +14,8 @@ import xray_emissivity
 from colossus.cosmology import cosmology
 from colossus.halo import mass_defs, concentration
 COSMO = cosmology.setCosmology('planck18')
+
+FONTSIZE = 30
 
 HUBBLE = 0.6711
 Msun = 1.99e33
@@ -23,6 +26,9 @@ mu = 0.59
 X_H = 0.76
 mp = 1.67e-24 # grams
 me = 9.1 * 10**(-28) # grams
+me_kev = 510.9989461 # in keV
+
+Tcmb = 2.73 # Kelvin
 
 c = 3e8 # m / s
 
@@ -42,7 +48,8 @@ ster2sqdeg = 3282.80635
 ster2sqarcmin = ster2sqdeg * 3600.0
 ster2sqarcsec = ster2sqdeg * 3600.0 * 3600.0
 
-xray_redshift = 0.01
+pe_factor = (2.0*X_H+2.0)/(5.0*X_H+3.0) # conversion factor from gas pressure to electron pressure
+p_to_y = pe_factor * (sigma_thomson * 1e4) / me_kev # cm^2 / keV
 
 
 # Cache emulators to save time
@@ -99,7 +106,7 @@ xray = xray_emissivity.XrayEmissivity()
 xray.read_emissivity_table('etable_05_2keV_cnts.hdf5')
 eff_area = 2000.0 #cm^2
 
-def compute_xray_profiles(radii, density_profile, temperature_profile, metallicity_profile):
+def compute_xray_profiles(halo_redshift, radii, density_profile, temperature_profile, metallicity_profile):
     np_xray_emissivity = xray.return_interpolated_emissivity(
         temperature_profile,
         metallicity_profile
@@ -111,18 +118,16 @@ def compute_xray_profiles(radii, density_profile, temperature_profile, metallici
 
     np_xray_emissivity *= ne * nH * eff_area
              
-    xray_redshift = 0.01
-   
     # Project X-ray emmissivity to get X-ray surface brightness
     np_xsb = abel_projection(radii * kpc , np_xray_emissivity ) / (4.0*math.pi)
     
     # account for redshift dimming, change units from per steradians to per arcmin^2
-    np_xsb *= 1.0 /(1+xray_redshift)**4.0 /ster2sqarcmin 
+    np_xsb *= 1.0 /(1+halo_redshift)**4.0 /ster2sqarcmin 
 
     return (np_xray_emissivity, np_xsb)
 
 
-radii = np.array([
+RADII = np.array([
     1.633852131856735820e-02,
     2.839309588794570668e-02,
     4.934154556483250076e-02,
@@ -138,7 +143,7 @@ radii = np.array([
     1.239403588140144663e+01,
 ]) * 1e3 # Convert from Mpc to kpc
 
-def get_xsb_for_parameter(A_name, simulation_suite, A_value, z, M200c):
+def get_xsb_for_parameter(A_name, simulation_suite, A_value, z, log_M200c):
     # Build emulators
     print("Creating density emulator...")
     density_emulator = build_emulator("rho_med", A_name, simulation_suite)
@@ -148,7 +153,7 @@ def get_xsb_for_parameter(A_name, simulation_suite, A_value, z, M200c):
     metallicity_emulator = build_emulator("metal_med", A_name, simulation_suite)
 
     # Create profiles from emulator
-    halo_emulate_param = [[A_value, z, M200c]]
+    halo_emulate_param = [[A_value, z, log_M200c]]
     
     density_profile = np.power(10.0, density_emulator([halo_emulate_param])).flatten()
     temperature_profile = np.power(10.0, temperature_emulator([halo_emulate_param])).flatten()
@@ -160,7 +165,8 @@ def get_xsb_for_parameter(A_name, simulation_suite, A_value, z, M200c):
 
 
     emissivity_profile, xsb_profile = compute_xray_profiles(
-        radii,
+        z,
+        RADII,
         np.array([density_profile]),
         np.array([temperature_profile]),
         np.array([metallicity_profile]),
@@ -171,37 +177,100 @@ def get_xsb_for_parameter(A_name, simulation_suite, A_value, z, M200c):
 
     return xsb_profile
 
+# NOTE: pressure: erg * cm^-3 (number density * kT)
+# Order of magnitude estimation:
+# y ~ \sigma_T/(m_e c^2) \int n_e kT dl
+# In the centers of halos, n_e ~ 0.1 cm^-3, kT ~ 0.1 keV for 1e14 Msun,
+# size of cluster dl ~ Mpc. \sigma_T = 6.25e-25 cm^2, electron rest mass m_e c^2 ~  511 keV.
+# You can scale kT with mass kT ~ M^{2/3}
+# y ~ (6.25e-25 cm^2 / 511 keV) * 0.1cm^-3 * 0.1 keV * 1 Mpc ~ 3.7e-5 (dimensionless) for M ~ 1e14
+# So for M ~ 1e13, kT ~ 0.1 * (1e13 / 1e14)^2 ~ 0.001 ~ 1e-3 keV => y ~ 3.7e-7
+def get_y_for_parameter(A_name, simulation_suite, A_value, z, log_M200c):
+    # Build emulator
+    print("Creating pressure emulator...")
+    pressure_emulator = build_emulator("pth_med", A_name, simulation_suite)
+
+    # Create profiles from emulator
+    halo_emulate_param = [[A_value, z, log_M200c]]
+    
+    pressure_profile = np.power(10.0, pressure_emulator([halo_emulate_param])).flatten() # erg * cm^-3
+
+    # Convert profile from pressure to y
+    y_profile = p_to_y * pressure_profile # (cm^2 / keV) * (erg / cm^3)
+    y_profile = abel_projection(RADII * kpc, np.array([y_profile])) # Multiplies by centimeter
+
+    y_profile = y_profile * units.centimeter * (units.centimeter**2 / units.kiloelectronvolt) * (units.erg / units.centimeter**3)
+    y_profile = y_profile.to(1)
+
+    return y_profile[0]
+
 
 # Which feedback parameters to vary
 feedback_parameters = ["AAGN1", "AAGN2", "ASN1", "ASN2"]
-simulation_suite = "SIMBA"
 
-fig, axs = plt.subplots(
-    1,
-    len(feedback_parameters),
-    figsize=(10*len(feedback_parameters), 8)
-)
+# Select desired halo parameters and simulation suite
+log_halo_mass = 13
+halo_redshift = 0.1
+simulation_suite = "IllustrisTNG"
 
+# Configurations for each profile to plot
+profiles_to_plot = {
+    "XSB": {
+        "ylabel": r"XSB [cts / s / $\mathrm{arcmin}^2$]",
+        "get_profile_function": get_xsb_for_parameter,
+        "ylim": [1e-9, 1e-2],
+    },
+    "compton-y": {
+        "ylabel": "$y$",
+        "get_profile_function": get_y_for_parameter,
+        "ylim": [1e-9, 1e-6],
+    },
+}
 
-for ax, feedback_parameter in zip(axs, feedback_parameters):
-    for param_value in [0.5, 1, 1.5, 2.0]:
-        profile = get_xsb_for_parameter(feedback_parameter, simulation_suite, param_value, 0.1, 13)
-        ax.plot(
-            radii,
-            profile,
-            label=f"{feedback_parameter} = {param_value}"
-        )
-        ax.set_title(feedback_parameter)
-        ax.set_xscale("log")
-        ax.set_yscale("log")
+# Determine radial bins in arcmin
+DA = COSMO.angularDiameterDistance(halo_redshift) / HUBBLE # Mpc
+DA *= 1000 # To kpc
 
-        ax.set_xlim([9, 300])
-        ax.set_ylim([1e-5, 1e-2])
-        ax.legend()
+RADII_ARCMIN = np.arctan(RADII / DA) * (180 / math.pi) * 60 # arcmin
 
-fig.suptitle(simulation_suite)
+# Create plots
+for profile_name, config in profiles_to_plot.items():
+    fig, axs = plt.subplots(
+        1,
+        len(feedback_parameters),
+        figsize=(10*len(feedback_parameters), 8),
+        sharey=True,
+    )
 
-plt.savefig(f"./XSB_emulated_{simulation_suite}.pdf")
+    for ax, feedback_parameter in zip(axs, feedback_parameters):
+        for param_value in [0.5, 1, 1.5, 2.0]:
+            profile = config["get_profile_function"](feedback_parameter, simulation_suite, param_value, halo_redshift, log_halo_mass)
+            ax.plot(
+                RADII_ARCMIN,
+                profile,
+                label=f"{feedback_parameter} = {param_value}",
+                linewidth=2,
+            )
+            ax.set_title(feedback_parameter, fontsize=FONTSIZE)
+            ax.set_xlabel(r"$\theta$ [arcmin]", fontsize=FONTSIZE)
 
-plt.show()
+            ax.tick_params(axis='both', which='major', labelsize=FONTSIZE)
 
+            ax.set_xscale("log")
+            ax.set_yscale("log")
+
+            ax.set_ylim(config["ylim"])
+
+            ax.legend(fontsize=FONTSIZE)
+    
+    # Only show ylabel in first plot
+    axs[0].set_ylabel(config["ylabel"], fontsize=FONTSIZE)
+
+    # Share y-axis with no space between axes
+    fig.subplots_adjust(wspace=0)
+
+    fig.suptitle(f"CAMELS ({simulation_suite}), " + "$log_{10} (M_{200c} / M_{\odot}) = $" + f"{log_halo_mass}, z = {halo_redshift}", fontsize=FONTSIZE)
+
+    plt.savefig(f"./{profile_name}_emulated_{simulation_suite}.pdf")
+
+    plt.show()

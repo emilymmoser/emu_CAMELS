@@ -1,6 +1,7 @@
 import corner
 import math
 from matplotlib import pyplot as plt
+from matplotlib.patches import Patch
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy import integrate
@@ -174,10 +175,6 @@ def get_xsb_for_parameter(A_name, simulation_suite, A_value, z, log_M200c):
     emissivity_profile = emissivity_profile[0]
     xsb_profile = xsb_profile[0]
 
-    print("XSB profile!")
-    print(xsb_profile)
-    print("Done with XSB profile!")
-
     return xsb_profile
 
 # NOTE: pressure: erg * cm^-3 (number density * kT)
@@ -204,10 +201,6 @@ def get_y_for_parameter(A_name, simulation_suite, A_value, z, log_M200c):
 
     y_profile = y_profile * units.centimeter * (units.centimeter**2 / units.kiloelectronvolt) * (units.erg / units.centimeter**3)
     y_profile = y_profile.to(1)
-
-    print("y profile!")
-    print(y_profile)
-    print("done with y profile!")
 
     return y_profile[0]
 
@@ -277,45 +270,51 @@ def fisher_matrix(radii, params, get_profile_function=get_xsb_for_parameter, del
 # Which feedback parameters to vary
 feedback_parameters = ["AAGN1", "AAGN2", "ASN1", "ASN2"]
 
+# Number of halos (which affects variance from sensitivity)
+num_halos = 1000
+
 # Configurations for the different surveys
 configurations = {
     "eROSITA": {
         "get_profile_function": get_xsb_for_parameter,
         "resolution_arcmin": 0.4,
-        "sensitivity": 1e-9,
+        "sensitivity": (1e-3)**2 / num_halos,
         "color": "blue",
         "show": True,
     },
     "CMB-S4-deep": {
         "get_profile_function": get_y_for_parameter,
         "resolution_arcmin": 1.0,
-        "sensitivity": (3.07e-6/Tcmb)**2 / 20000,
+        "sensitivity": (3.07e-6/Tcmb)**2 / num_halos / 10,
         "color": "orange",
-        "show": False,
+        "show": True,
     },
     "CMB-S4-wide": {
         "get_profile_function": get_y_for_parameter,
         "resolution_arcmin": 0.8,
-        "sensitivity": (1.67e-5/Tcmb)**2 / 20000,
+        "sensitivity": (1.67e-5/Tcmb)**2 / num_halos / 10,
         "color": "green",
-        "show": False,
+        "show": True,
     },
     "CMB-HD": {
         "get_profile_function": get_y_for_parameter,
         "resolution_arcmin": 0.15,
-        "sensitivity": (2.7e-6/Tcmb)**2 / 20000,
+        "sensitivity": (2.7e-6/Tcmb)**2 / num_halos / 10,
         "color": "red",
-        "show": False,
+        "show": True,
     },
 }
 
 # Select desired halo parameters and simulation suite
 log_halo_mass = 13
-halo_redshift = 0.5
+halo_redshift = 0.1
 simulation_suite = "IllustrisTNG"
 
 # Plot contours for all surveys
 fig = None
+
+# Fontsize
+FONTSIZE = 20
 
 for survey in configurations.keys():
     if not configurations[survey]["show"]:
@@ -354,6 +353,8 @@ for survey in configurations.keys():
             plot_density=False, # Show 2D histogram-like square bins
             plot_contours=True, # Show sigma contours
             color=configurations[survey]["color"],
+            levels=[0.393], # Motivated by https://corner.readthedocs.io/en/latest/pages/sigmas.html?highlight=levels#a-note-about-sigmas
+            label_kwargs={"fontsize": FONTSIZE},
         )
     else:
         corner.corner(
@@ -366,11 +367,38 @@ for survey in configurations.keys():
             plot_contours=True, # Show sigma contours
             fig=fig,
             color=configurations[survey]["color"],
+            levels=[0.393], # Motivated by https://corner.readthedocs.io/en/latest/pages/sigmas.html?highlight=levels#a-note-about-sigmas
+            label_kwargs={"fontsize": FONTSIZE},
         )
-        
 
-fig.suptitle(f"CAMELS ({simulation_suite}), " + "$log_{10} (M_{200c} / M_{\odot}) = $" + f"{log_halo_mass}, z = {halo_redshift}")
+# Configure legend to show survey names
+legend_elements = [
+    Patch(
+        facecolor="white",
+        edgecolor=config["color"],
+        label=survey,
+    )
+    for survey, config in configurations.items()
+    if config["show"] is True
+]
+fig.legend(handles=legend_elements, loc=(0.7, 0.75), fontsize=FONTSIZE)
 
-#plt.savefig(f"./corner_plot_Mass{log_halo_mass}Redshift{halo_redshift}_{simulation_suite}.pdf")
+# Get axes, control their xlim and ylim
+axs = fig.get_axes()
+count = 0
+axis_limits = [0, 2]
+for ax in axs:
+    # Do not change ylim on diagonals (histograms)
+    column_number = count % len(feedback_parameters)
+    row_number = int(count / len(feedback_parameters))
+    count += 1
+    if row_number != column_number:
+        ax.set_ylim(axis_limits)
+
+    ax.set_xlim(axis_limits)
+
+fig.suptitle(f"CAMELS ({simulation_suite}), " + "$log_{10} (M_{200c} / M_{\odot}) = $" + f"{log_halo_mass}, z = {halo_redshift}", fontsize=FONTSIZE)
+
+plt.savefig(f"./corner_plot_Mass{log_halo_mass}Redshift{halo_redshift}_{simulation_suite}.pdf")
 
 plt.show()

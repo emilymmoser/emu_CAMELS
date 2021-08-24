@@ -202,6 +202,9 @@ def get_y_for_parameter(A_name, simulation_suite, A_value, z, log_M200c):
     y_profile = y_profile * units.centimeter * (units.centimeter**2 / units.kiloelectronvolt) * (units.erg / units.centimeter**3)
     y_profile = y_profile.to(1)
 
+    # TODO figure out why y is so small
+    #y_profile *= 1000
+
     return y_profile[0]
 
 

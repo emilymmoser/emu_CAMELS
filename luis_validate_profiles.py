@@ -15,7 +15,7 @@ from colossus.cosmology import cosmology
 from colossus.halo import mass_defs, concentration
 COSMO = cosmology.setCosmology('planck18')
 
-FONTSIZE = 30
+FONTSIZE = 27
 
 HUBBLE = 0.6711
 Msun = 1.99e33
@@ -202,6 +202,9 @@ def get_y_for_parameter(A_name, simulation_suite, A_value, z, log_M200c):
     y_profile = y_profile * units.centimeter * (units.centimeter**2 / units.kiloelectronvolt) * (units.erg / units.centimeter**3)
     y_profile = y_profile.to(1)
 
+    # TODO figure out why y values are so low
+    y_profile *= 1000
+
     return y_profile[0]
 
 
@@ -214,24 +217,25 @@ halo_redshift = 0.1
 simulation_suite = "IllustrisTNG"
 
 # Configurations for each profile to plot
+eROSITA_sensitivity = 2e-3
+CMB_sensitivity = 2.7e-6/Tcmb # CMB-HD
+CMB_resolution = 0.15 # CMB-HD
+
+
 profiles_to_plot = {
     "XSB": {
         "ylabel": r"XSB [cts / s / $\mathrm{arcmin}^2$]",
         "get_profile_function": get_xsb_for_parameter,
         "ylim": [1e-9, 1e-2],
+        "yerr": eROSITA_sensitivity,
     },
     "compton-y": {
         "ylabel": "$y$",
         "get_profile_function": get_y_for_parameter,
-        "ylim": [1e-9, 1e-6],
+        "ylim": [1e-6, 1e-3],
+        "yerr": CMB_sensitivity / CMB_resolution,
     },
 }
-
-# Determine radial bins in arcmin
-DA = COSMO.angularDiameterDistance(halo_redshift) / HUBBLE # Mpc
-DA *= 1000 # To kpc
-
-RADII_ARCMIN = np.arctan(RADII / DA) * (180 / math.pi) * 60 # arcmin
 
 # Create plots
 for profile_name, config in profiles_to_plot.items():
@@ -243,22 +247,36 @@ for profile_name, config in profiles_to_plot.items():
     )
 
     for ax, feedback_parameter in zip(axs, feedback_parameters):
+        # For XSB, add background horizontal line
+        if profile_name == "XSB":
+            ax.plot(
+                [1e-5, 1e10],
+                [eROSITA_sensitivity, eROSITA_sensitivity],
+                ls="--",
+                label="eROSITA background",
+                linewidth=2,
+                c="grey"
+            )
         for param_value in [0.5, 1, 1.5, 2.0]:
             profile = config["get_profile_function"](feedback_parameter, simulation_suite, param_value, halo_redshift, log_halo_mass)
-            ax.plot(
-                RADII_ARCMIN,
+            
+            ax.errorbar(
+                RADII,
                 profile,
+                yerr=config["yerr"],
                 label=f"{feedback_parameter} = {param_value}",
-                linewidth=2,
+                linewidth=3,
             )
-            ax.set_title(feedback_parameter, fontsize=FONTSIZE)
-            ax.set_xlabel(r"$\theta$ [arcmin]", fontsize=FONTSIZE)
 
-            ax.tick_params(axis='both', which='major', labelsize=FONTSIZE)
+            ax.set_title(feedback_parameter, fontsize=FONTSIZE)
+            ax.set_xlabel(r"$r$ [kpc]", fontsize=FONTSIZE)
+
+            ax.tick_params(axis="both", which="major", labelsize=FONTSIZE)
 
             ax.set_xscale("log")
-            ax.set_yscale("log")
+            #ax.set_yscale("log")
 
+            ax.set_xlim([1e1, 1e3])
             ax.set_ylim(config["ylim"])
 
             ax.legend(fontsize=FONTSIZE)
@@ -266,11 +284,8 @@ for profile_name, config in profiles_to_plot.items():
     # Only show ylabel in first plot
     axs[0].set_ylabel(config["ylabel"], fontsize=FONTSIZE)
 
-    # Share y-axis with no space between axes
-    fig.subplots_adjust(wspace=0)
-
     fig.suptitle(f"CAMELS ({simulation_suite}), " + "$log_{10} (M_{200c} / M_{\odot}) = $" + f"{log_halo_mass}, z = {halo_redshift}", fontsize=FONTSIZE)
 
-    plt.savefig(f"./{profile_name}_emulated_{simulation_suite}.pdf")
+    plt.savefig(f"./{profile_name}_profiles_Mass{log_halo_mass}Redshift{halo_redshift}_{simulation_suite}.pdf")
 
     plt.show()

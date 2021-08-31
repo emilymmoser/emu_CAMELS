@@ -1,115 +1,105 @@
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from matplotlib import cm
-from matplotlib import gridspec
-import scipy.interpolate
 import numpy as np
 import warnings
 import random
 import time
-import ostrich.emulate
-import ostrich.interpolate
-import functions as fs
+import helper_functions as fs
 import sys
+sys.path.append('/home/cemoser/Projection_Codes/Mop-c-GT-copy/mopc')
+import mopc_fft as mop #check we shouldn't be using gaussbeam?
+from getdist import plots,MCSamples
+import matplotlib.pyplot as plt
+from matplotlib import gridspec
 
+#NOTE: this script only works for rho_mean and pth_mean, since we are projecting weighted profiles into kSZ and tSZ (can't weight the median profiles, only weighted mean)
 
-home='/home/cemoser/Repositories/ostrich/Emulator_profiles/'
+home_emu='/home/cemoser/Repositories/emu_CAMELS/emulator_profiles/mass_bins_11-13/'
+home_mop='/home/cemoser/Repositories/emu_CAMELS/mopc_profiles/'
+home_mopc='/home/cemoser/Projection_Codes/Mop-c-GT-copy/'
 suite=sys.argv[1]
-vary_str=sys.argv[2]
-prof=sys.argv[3]
+prof=sys.argv[2]
 func_str='linear'
 
 mass=fs.mass
 mass_str=fs.mass_str
 snap=fs.snap
 z=fs.choose_redshift(suite)
-vary,sims=fs.choose_vary(vary_str)
-samples=fs.cartesian_prod(vary,z,mass) 
-nsamp=samples.shape[0]
+Z_deriv=z[-1]
 
-samples,x,y,emulator=fs.build_emulator_3D(home,suite,vary_str,prof,func_str)
-
-if prof=='rho_mean':
-    ylabel=r'$\frac{\rho_{mean}}{\rho_0}$'
-elif prof=='rho_med':
-    ylabel=r'$\frac{\rho_{med}}{\rho_0}$'
-elif prof=='pth_mean':
-    ylabel=r'$\frac{P_{mean}}{P_0}$'
-elif prof=='pth_med':
-    ylabel=r'$\frac{P_{med}}{P_0}$'
-
-if vary_str=='ASN1':
-    vary_label=r'$A_{SN1}$'
-    delta_theta=[0.01,0.1,0.2,0.3,0.5]
-elif vary_str=='ASN2':
-    vary_label=r'$A_{SN2}$'
-    delta_theta=[0.01,0.05,0.1,0.15,0.25]
-elif vary_str=='AAGN1':
-    vary_label=r'$A_{AGN1}$'
-    delta_theta=[0.01,0.1,0.2,0.3,0.5]
-elif vary_str=='AAGN2':
-    vary_label=r'$A_{AGN2}$'
-    delta_theta=[0.01,0.05,0.1,0.15,0.25]
-
-
-#filter the y vals back down to just the 11 profiles varying the feedback param
-m_idx,z_idx=1,2
-A_idx=np.linspace(0,10,11,dtype='int')
-y_filtered=[]
-for a in A_idx:
-    index=fs.retrieve_index_3D(a,z_idx,m_idx)
-    #print("For a=%i,b=%i,c=%i, our y index is %i"%(a,z_idx,m_idx,index))
-    y_filtered.append(y[:,index])
-
-y_filtered=np.array(y_filtered)
-M=mass[m_idx]
-z=z[z_idx]
-
-#pick a fiducial theta value
-A_idx_theta0=5
+vary_arr=['ASN1','AAGN1','ASN2','AAGN2']
+delt_theta={'ASN1':0.1,'AAGN1':0.1,'ASN2':0.05,'AAGN2':0.05}
+#fiducial theta value
 theta0=1.0
+A_idx_theta0=5
 
-def derivative(profile_up,profile_low,delta):
-    deriv=(profile_up-profile_low)/(2.*delta)
-    return deriv
 
-cmap=cm.get_cmap('viridis',len(delta_theta))
-colors=cmap.colors
-#just plot the data
-fiducial_profile=y_filtered[A_idx_theta0,:]
+#------------------------------------
+#projection codes
+beam_150_file = np.genfromtxt(home_mopc+'data/beam_f150_daynight.txt')
+ell = beam_150_file[:,0]
+beam_150_ell = beam_150_file[:,1]
+ell2 = np.genfromtxt(home_mopc+'data/act_planck_s08_s18_cmb_f150_daynight_response_tsz.txt')[:,0]
+res_150 = np.genfromtxt(home_mopc+'data/act_planck_s08_s18_cmb_f150_daynight_response_tsz.txt')[:,1]
+nu=150.
+theta_arc=np.linspace(0.7, 5., 6)
 
-fig=plt.figure(figsize=(6,8))
-gs=gridspec.GridSpec(2,1,height_ratios=[2,1])
-a0=plt.subplot(gs[0])
-a1=plt.subplot(gs[1],sharex=a0)
-plt.setp(a0.get_xticklabels(),visible=False)
+def fBeamF_150(x):
+    return np.interp(x,ell,beam_150_ell) 
+def respT_150(x):
+    return np.interp(x,ell2,res_150)
 
-for i in (A_idx_theta0-1,A_idx_theta0,A_idx_theta0+1):
-    a0.semilogx(x,10**y_filtered[i,:]/10**fiducial_profile,label='%s = %.2f'%(vary_label,vary[i]))
-for count,val in enumerate(delta_theta):
-    params_up=[[theta0+val,z,M]]
-    params_low=[[theta0-val,z,M]]
 
-    profile_up=emulator(params_up).reshape(len(x))
-    profile_low=emulator(params_low).reshape(len(x))
+def project_profiles(prof,theta,z,nu,beam,respT,x,profile):
+    if prof=='rho_mean' or prof=='rho_med':
+        proj=mop.make_a_obs_profile_rho_array(theta,z,beam,x,profile)
+    elif prof=='pth_mean' or prof=='pth_med':
+        proj=mop.make_a_obs_profile_pth_array(theta,z,nu,beam,respT,x,profile)
+    return proj
 
-    deriv=derivative(profile_up,profile_low,val)
-    a0.semilogx(x,10**profile_up/10**fiducial_profile,linestyle='dashed',color=colors[count],label=r'emu +$\Delta\theta=%.2f$'%val)
-    a0.semilogx(x,10**profile_low/10**fiducial_profile,linestyle='dotted',color=colors[count])
+if suite=='IllustrisTNG':
+    inner_cut=3.e-3
+elif suite=='SIMBA':
+    inner_cut=5.e-4
+#----------------------------------
 
-    #plot the derivatives
-    a1.semilogx(x,deriv,'-o',color=colors[count],label=r'$\Delta\theta=%.2f$'%val)
-    a1.axhline(0,linestyle='dashed',color='gray',alpha=0.6)
+start=time.time()
+derivatives=[]
+for count,val in enumerate(vary_arr):
+    vary_str=val
+    delta_theta=delt_theta[vary_str]
+ 
+    vary,sims=fs.choose_vary(vary_str)
+    sim_fiducial=sims[A_idx_theta0]
+    samples,x,y,emulator=fs.build_emulator_3D(home_emu,suite,vary_str,prof,func_str)
+    usecols=fs.usecols_w_dict[prof]
+    
+    x,fidu_profile=np.loadtxt(home_mop+suite+'/'+suite+'_'+sim_fiducial+'_024_w.txt',usecols=usecols,unpack=True)
+    fidu_profile=fs.cgs_units(prof,fidu_profile)
+    x,fidu_profile=fs.inner_cut_1D(inner_cut,x,fidu_profile)
 
-#if we wanted individual titles
-#plt.setp([a0,a1],title='test')
-plt.suptitle(r'Vary %s, M = %.1f, z = %.2f, $\theta_0$ = 1.0'%(vary_label,M,z))
-a1.set_xlabel('R (Mpc)',size=14)
-a0.set_ylabel(ylabel,size=18)
-a1.set_ylabel('Derivative',size=12)
-a0.legend()
-a1.legend()
-gs.tight_layout(fig,rect=[0,0,1,0.97])
-plt.savefig('./Derivative/'+suite+'_'+vary_str+'_M'+str(m_idx)+'_z'+str(z_idx)+'_'+prof+'.png',bbox_inches='tight')
-plt.close()
+    #for the 3d derivative plot
+    yf=fidu_profile/fidu_profile
+    profile_plus,profile_minus=fs.compute_weighted_profiles_pm(theta0,delta_theta,Z_deriv,emulator,x)
+    yp,ym=10**profile_plus/fidu_profile,10**profile_minus/fidu_profile
+    yd=fs.derivative(profile_plus,profile_minus,delta_theta)
+    ylabel=fs.choose_ylabel(prof,3)
+    title=suite+' '+vary_str
+    fs.plot_derivatives(x,yf,yp,ym,yd,ylabel,title,3)
+    plt.savefig('/home/cemoser/Repositories/emu_CAMELS/tests/'+suite+'_'+vary_str+'_'+prof+'_deriv3d.png')
+    plt.close()
+
+    proj_fidu=project_profiles(prof,theta_arc,Z_deriv,nu,fBeamF_150,respT_150,x,fidu_profile)
+    proj_plus=project_profiles(prof,theta_arc,Z_deriv,nu,fBeamF_150,respT_150,x,10**profile_plus)
+    proj_minus=project_profiles(prof,theta_arc,Z_deriv,nu,fBeamF_150,respT_150,x,10**profile_minus)
+    proj_d=fs.derivative(proj_plus,proj_minus,delta_theta)
+    ylabel=fs.choose_ylabel(prof,2)
+    fs.plot_derivatives(theta_arc,proj_fidu,proj_plus,proj_minus,proj_d,ylabel,title,2)
+    plt.savefig('/home/cemoser/Repositories/emu_CAMELS/tests/'+suite+'_'+vary_str+'_'+prof+'_deriv2d.png')
+    plt.close()
+
+    derivatives.append(proj_d)
+
+derivatives=np.array(derivatives)
+end=time.time()
+print("it took %.2f minutes to create derivatives array"%((end-start)/60.))
+
+np.savetxt('/home/cemoser/Repositories/emu_CAMELS/tests/derivatives_array_'+suite+'_'+prof+'.txt',derivatives)

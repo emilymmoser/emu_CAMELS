@@ -1,0 +1,10 @@
+astropy
+colossus
+corner
+dill
+h5py
+pyatomdb
+scipy
+sklearn
+tqdm
+-e git+https://github.com/dylancromer/pality.git@ff27ac85a977f7edfc08af1c12cc790fc27f7e13#egg=pality

@@ -12,7 +12,7 @@ from matplotlib import gridspec
 
 #NOTE: this script only works for rho_mean and pth_mean, since we are projecting weighted profiles into kSZ and tSZ (can't weight the median profiles, only weighted mean)
 
-home_emu='/home/cemoser/Repositories/emu_CAMELS/emulator_profiles/mass_bins_11-13/'
+home_emu='/home/cemoser/Repositories/emu_CAMELS/emulator_profiles/'
 home_mop='/home/cemoser/Repositories/emu_CAMELS/mopc_profiles/'
 home_mopc='/home/cemoser/Projection_Codes/Mop-c-GT-copy/'
 suite=sys.argv[1]

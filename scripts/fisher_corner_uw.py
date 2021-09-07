@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 #NOTE: this script only works for rho_mean and pth_mean, since we are projecting weighted profiles into kSZ and tSZ (can't weight the median profiles, only weighted mean)
 
 suite=sys.argv[1]
-mass_str='12.3-13.1' #we won't need this when we figure out the weighting
+mass_str='12-12.3' #we won't need this when we figure out the weighting
 
 z=fs.choose_redshift(suite)
 Z_deriv=z[-1] #hard-coded for z=0.54
@@ -75,7 +75,7 @@ g=plots.get_subplot_plotter()
 g.settings.title_limit_labels=False
 g.settings.title_limit_fontsize=13
 #g.settings.constrained_layout=True
-g.plots_1d([samp_combined,samp_pth,samp_rho],colors=['b','r','k'],title_limit=1,legend_ncol=3)
+g.plots_1d([samp_combined,samp_pth,samp_rho],colors=['b','r','k'],title_limit=1)#,legend_ncol=3)
 #g.add_legend(['1','2','3'],legend_ncol=3,label_order=-1,bbox_to_anchor=[0.9,3.4])
 plt.savefig('/home/cemoser/Repositories/emu_CAMELS/figures/corner_plots/corner_1d_'+suite+'_uw_'+mass_str+'.png',bbox_inches='tight')
 plt.close()

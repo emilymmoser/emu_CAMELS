@@ -73,6 +73,6 @@ plt.close()
 g=plots.get_subplot_plotter()
 g.settings.title_limit_labels=False
 g.settings.title_limit_fontsize=13
-g.plots_1d([samp_combined,samp_pth,samp_rho],colors=['b','r','k'],title_limit=1,legend_ncol=3)
+g.plots_1d([samp_combined,samp_pth,samp_rho],colors=['b','r','k'],title_limit=1)
 plt.savefig('/home/cemoser/Repositories/emu_CAMELS/figures/corner_plots/corner_1d_'+suite+'_w.png',bbox_inches='tight')
 plt.close()

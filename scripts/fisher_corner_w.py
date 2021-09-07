@@ -23,7 +23,7 @@ derivatives_pth=np.genfromtxt('/home/cemoser/Repositories/emu_CAMELS/derivative_
 dmu0_rho=np.transpose(derivatives_rho)
 dmu0_pth=np.transpose(derivatives_pth)
 
-#calculate the fisher matrix using the SO covmats
+#SO covmat, DESI-like NGAL
 cov_rho=np.loadtxt('/home/cemoser/Projection_Codes/CovMat_SO_V3/CovMatV3_CMB_mode_2_fsky_0.4_beam1.4_Lmax19998.0_2018-02-19.txt',dtype=float)
 cov_pth=np.loadtxt('/home/cemoser/Projection_Codes/CovMat_SO_V3/CovMatV3_y_mode_2_fsky_0.4_beam1.4_Lmax19998.0_2018-02-19.txt',dtype=float)
 NGAL=498.6e4
@@ -44,11 +44,6 @@ err_rho=np.sqrt(np.diag(covariance_rho))
 err_pth=np.sqrt(np.diag(covariance_pth))
 err_combined=np.sqrt(np.diag(covariance_combined))
 
-print(suite,'weighted')
-print("err rho",err_rho)
-print("err pth",err_pth)
-print("err combined",err_combined)
-
 np.savetxt('/home/cemoser/Repositories/emu_CAMELS/figures/corner_plots/errs_'+suite+'_w.txt',(err_rho,err_pth,err_combined),header='first line err rho, second line err pth, third line err combined \n columns ASN1, AAGN1, ASN2, AAGN2')
 
 chain_rho=np.random.multivariate_normal(mean,covariance_rho,size=10000)
@@ -65,7 +60,7 @@ g=plots.getSubplotPlotter()
 g.settings.figure_legend_frame=False
 g.settings.title_limit_fontsize=13
 g.settings.title_limit_labels=False
-g.triangle_plot([samp_rho,samp_pth,samp_combined],filled=True)
+g.triangle_plot([samp_combined,samp_rho,samp_pth],filled=True,title_limit=1,contour_args=[{'zorder':3,'color':'b'},{'zorder':1,'color':'dimgray'},{'zorder':2,'color':'r'}],label_order=[1,2,0])
 plt.savefig('/home/cemoser/Repositories/emu_CAMELS/figures/corner_plots/corner_2d_'+suite+'_w.png',bbox_inches='tight')
 plt.close()
 

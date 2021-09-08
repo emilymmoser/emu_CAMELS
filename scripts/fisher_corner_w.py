@@ -1,7 +1,4 @@
 import numpy as np
-import warnings
-import random
-import time
 import helper_functions as fs
 import sys
 from getdist import plots,MCSamples
@@ -16,9 +13,13 @@ Z_deriv=z[-1] #hard-coded for z=0.54
 
 vary_arr=['ASN1','AAGN1','ASN2','AAGN2']
 
+#where the figures will save
+save='/home/cemoser/Repositories/emu_CAMELS/figures/corner_plots/'
 
-derivatives_rho=np.genfromtxt('/home/cemoser/Repositories/emu_CAMELS/derivative_arrays/'+suite+'_rho_mean_w.txt')    
-derivatives_pth=np.genfromtxt('/home/cemoser/Repositories/emu_CAMELS/derivative_arrays/'+suite+'_pth_mean_w.txt')
+#point to derivative arrays
+home_deriv='/home/cemoser/Repositories/emu_CAMELS/derivative_arrays/'
+derivatives_rho=np.genfromtxt(home_deriv+suite+'_rho_mean_w.txt')    
+derivatives_pth=np.genfromtxt(home_deriv+suite+'_pth_mean_w.txt')
 
 dmu0_rho=np.transpose(derivatives_rho)
 dmu0_pth=np.transpose(derivatives_pth)
@@ -44,7 +45,7 @@ err_rho=np.sqrt(np.diag(covariance_rho))
 err_pth=np.sqrt(np.diag(covariance_pth))
 err_combined=np.sqrt(np.diag(covariance_combined))
 
-np.savetxt('/home/cemoser/Repositories/emu_CAMELS/figures/corner_plots/errs_'+suite+'_w.txt',(err_rho,err_pth,err_combined),header='first line err rho, second line err pth, third line err combined \n columns ASN1, AAGN1, ASN2, AAGN2')
+#np.savetxt(save+'errs_'+suite+'_w.txt',(err_rho,err_pth,err_combined),header='first line err rho, second line err pth, third line err combined \n columns ASN1, AAGN1, ASN2, AAGN2')
 
 chain_rho=np.random.multivariate_normal(mean,covariance_rho,size=10000)
 chain_pth=np.random.multivariate_normal(mean,covariance_pth,size=10000)
@@ -61,13 +62,15 @@ g.settings.figure_legend_frame=False
 g.settings.title_limit_fontsize=13
 g.settings.title_limit_labels=False
 g.triangle_plot([samp_combined,samp_rho,samp_pth],filled=True,title_limit=1,contour_args=[{'zorder':3,'color':'b'},{'zorder':1,'color':'dimgray'},{'zorder':2,'color':'r'}],label_order=[1,2,0])
-plt.savefig('/home/cemoser/Repositories/emu_CAMELS/figures/corner_plots/corner_2d_'+suite+'_w.png',bbox_inches='tight')
+plt.savefig(save+'corner_2d_'+suite+'_w.png',bbox_inches='tight')
 plt.close()
 
-
+#1D distribution plots
+'''
 g=plots.get_subplot_plotter()
 g.settings.title_limit_labels=False
 g.settings.title_limit_fontsize=13
 g.plots_1d([samp_combined,samp_pth,samp_rho],colors=['b','r','k'],title_limit=1)
-plt.savefig('/home/cemoser/Repositories/emu_CAMELS/figures/corner_plots/corner_1d_'+suite+'_w.png',bbox_inches='tight')
+plt.savefig(save+'corner_1d_'+suite+'_w.png',bbox_inches='tight')
 plt.close()
+'''

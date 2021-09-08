@@ -1,16 +1,11 @@
 import numpy as np
-import warnings
-import random
 import time
 import helper_functions as fs
 import sys
 sys.path.append('/home/cemoser/Projection_Codes/Mop-c-GT-copy/mopc')
-import mopc_fft as mop #check we shouldn't be using gaussbeam?
-from getdist import plots,MCSamples
+import mopc_fft as mop #can also use gaussbeam
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-
-#NOTE: this script only works for rho_mean and pth_mean, since we are projecting weighted profiles into kSZ and tSZ (can't weight the median profiles, only weighted mean)
 
 home_emu='/home/cemoser/Repositories/emu_CAMELS/emulator_profiles/'
 home_mop='/home/cemoser/Repositories/emu_CAMELS/mopc_profiles/'
@@ -26,8 +21,6 @@ z=fs.choose_redshift(suite)
 Z_deriv=z[-1] #hard-coded for z=0.54
 M=mass[-1] #hard-coded for highest mass bin
 mass_str=mass_str[-1] #hard-coded for highest mass bin
-
-print("mass",M)
 
 vary_arr=['ASN1','AAGN1','ASN2','AAGN2']
 delt_theta={'ASN1':0.1,'AAGN1':0.1,'ASN2':0.05,'AAGN2':0.05}

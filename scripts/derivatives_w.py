@@ -1,12 +1,9 @@
 import numpy as np
-import warnings
-import random
 import time
 import helper_functions as fs
 import sys
 sys.path.append('/home/cemoser/Projection_Codes/Mop-c-GT-copy/mopc')
 import mopc_fft as mop #check we shouldn't be using gaussbeam?
-from getdist import plots,MCSamples
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 

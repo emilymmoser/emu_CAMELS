@@ -22,7 +22,7 @@ Specify the suite, feedback parameter, and profile type in lines 3-6.
 ## A few additional notes
 1. The input masses are in log, so if you want to emulate a profile of mass 1e14 Msol, you would input it as 14.
 
-2. The current profiles cover the radial range 0.01-10 Mpc. This can also be seen by looking at the txt files in the emulator_profiles directory.
+2. The current profiles cover the radial range ~(3e-3 for TNG,5e-4 for SIMBA)-12 Mpc. This can also be seen by looking at the txt files in the emulator_profiles directory.
 
 3. The emulator will return a profile in log values, and CGS units. 
 

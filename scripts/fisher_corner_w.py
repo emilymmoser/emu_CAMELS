@@ -14,7 +14,7 @@ Z_deriv=z[-1] #hard-coded for z=0.54
 vary_arr=['ASN1','AAGN1','ASN2','AAGN2']
 
 #where the figures will save
-save='/home/cemoser/Repositories/emu_CAMELS/figures/corner_plots/'
+save='/home/cemoser/Repositories/emu_CAMELS/figures/corner_plots/general_emulator/'
 
 #point to derivative arrays
 home_deriv='/home/cemoser/Repositories/emu_CAMELS/derivative_arrays/'
@@ -62,7 +62,7 @@ g.settings.figure_legend_frame=False
 g.settings.title_limit_fontsize=13
 g.settings.title_limit_labels=False
 g.triangle_plot([samp_combined,samp_rho,samp_pth],filled=True,title_limit=1,contour_args=[{'zorder':3,'color':'b'},{'zorder':1,'color':'dimgray'},{'zorder':2,'color':'r'}],label_order=[1,2,0])
-plt.savefig(save+'corner_2d_'+suite+'_w.png',bbox_inches='tight')
+plt.savefig(save+'corner_2d_fft_'+suite+'_w.png',bbox_inches='tight')
 plt.close()
 
 #1D distribution plots
@@ -71,6 +71,6 @@ g=plots.get_subplot_plotter()
 g.settings.title_limit_labels=False
 g.settings.title_limit_fontsize=13
 g.plots_1d([samp_combined,samp_pth,samp_rho],colors=['b','r','k'],title_limit=1)
-plt.savefig(save+'corner_1d_'+suite+'_w.png',bbox_inches='tight')
+plt.savefig(save+'corner_1d_fft_'+suite+'_w.png',bbox_inches='tight')
 plt.close()
 '''

@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 
 home_emu='/home/cemoser/Repositories/emu_CAMELS/emulator_profiles/'
-home_mop='/home/cemoser/Repositories/emu_CAMELS/mopc_profiles/'
 home_mopc='/home/cemoser/Projection_Codes/Mop-c-GT-copy/'
 suite=sys.argv[1]
 prof=sys.argv[2]
@@ -83,7 +82,7 @@ for count,val in enumerate(vary_arr):
     ylabel=fs.choose_ylabel(prof,3)
     title=suite+' '+vary_str
     fs.plot_derivatives(x,yf,yp,ym,yd,ylabel,title,3)
-    plt.savefig('/home/cemoser/Repositories/emu_CAMELS/figures/derivatives/'+suite+'_'+vary_str+'_'+prof+'_deriv3d_uw_'+mass_str+'.png')
+    plt.savefig('/home/cemoser/Repositories/emu_CAMELS/figures/derivatives/general_emulator/'+suite+'_'+vary_str+'_'+prof+'_deriv3d_uw_'+mass_str+'.png')
     plt.close()
 
     proj_fidu=project_profiles(prof,theta_arc,Z_deriv,nu,fBeamF_150,respT_150,x,fidu_profile)
@@ -92,7 +91,7 @@ for count,val in enumerate(vary_arr):
     proj_d=fs.derivative(proj_plus,proj_minus,delta_theta)
     ylabel=fs.choose_ylabel(prof,2)
     fs.plot_derivatives(theta_arc,proj_fidu,proj_plus,proj_minus,proj_d,ylabel,title,2)
-    plt.savefig('/home/cemoser/Repositories/emu_CAMELS/figures/derivatives/'+suite+'_'+vary_str+'_'+prof+'_deriv2d_uw_'+mass_str+'.png')
+    plt.savefig('/home/cemoser/Repositories/emu_CAMELS/figures/derivatives/general_emulator/'+suite+'_'+vary_str+'_'+prof+'_deriv2d_fft_uw_'+mass_str+'.png')
     plt.close()
 
     derivatives.append(proj_d)

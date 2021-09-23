@@ -4,6 +4,7 @@ import ostrich.interpolate
 from astropy import units as u
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
+import warnings
 
 ASN1=np.array([0.25000,0.32988,0.43528,0.57435,0.75786,1.00000,1.31951,1.74110,2.29740,3.03143,4.00000])
 ASN2=np.array([0.50000,0.57435,0.65975,0.75786,0.87055,1.00000,1.14870,1.31951,1.51572,1.74110,2.00000])
@@ -199,6 +200,105 @@ def compute_weighted_profiles_pm(A_emu,delta_thet,z_emu,emulator,x): #take out h
     profile_minus_w=np.average(profiles_minus_uw,weights=w,axis=0)
     return profile_plus_w,profile_minus_w
 
+def compute_unweighted_profiles_pm(A_emu,delta_thet,z_emu,emulator,x,M):
+    params_plus=[[A_emu+delta_thet,z_emu,M]]
+    params_minus=[[A_emu-delta_thet,z_emu,M]]
+
+    profile_plus=emulator(params_plus).reshape(len(x))
+    profile_minus=emulator(params_minus).reshape(len(x))
+    return profile_plus,profile_minus
+
 def derivative(profile_up,profile_low,delta):
     deriv=(profile_up-profile_low)/(2.*delta)
     return deriv
+
+
+#CMASS emulator scripts
+def load_profiles_CMASS(usecols,home,suite,sims,snap,prof):
+    y=[]
+    for s in np.arange(len(sims)):
+        f=home+suite+'/'+suite+'_'+sims[s]+'_'+snap+'_w.txt'
+        x,yi=np.loadtxt(f,usecols=usecols,unpack=True)
+        yi=cgs_units(prof,yi)
+        y.append(np.log10(yi))
+
+    y=np.array(y)
+    return x,y
+
+def build_emulator_CMASS(home,suite,vary_str,prof,func_str):
+    z=choose_redshift(suite)
+    z=z[-1]
+    vary,sims=choose_vary(vary_str)
+    snap='024'
+    samples=vary
+    nsamp=len(samples)
+
+    usecols=usecols_w_dict[prof]
+    x,y=load_profiles_CMASS(usecols,home,suite,sims,snap,prof)
+    y=np.transpose(y)
+
+    emulator=ostrich.emulate.PcaEmulator.create_from_data(
+        samples,
+        y,
+        ostrich.interpolate.RbfInterpolator,
+        interpolator_kwargs={'function':func_str},
+        num_components=12)
+    return samples,x,y,emulator
+
+def get_errs_drop1(samps,data,true_coord,true_data):
+    emulator = ostrich.emulate.PcaEmulator.create_from_data(
+        samps,
+        data.reshape(data.shape[0],-1),
+        ostrich.interpolate.RbfInterpolator,
+        interpolator_kwargs={'function': 'linear'},
+        num_components=12,
+    )
+    emulated = emulator(true_coord)
+    emulated=emulated.reshape(len(data))
+    emulated=10**emulated
+    true_data=10**true_data
+    err=((emulated - true_data)/true_data).squeeze()
+    return emulated,err
+
+def drop1_test(y,nsamp,samples):
+    errs_drop1=np.zeros_like(y)
+    emulated_drop1=np.zeros_like(y)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        for i in range(nsamp):
+            emulated_drop1[:,i],errs_drop1[:,i]=get_errs_drop1(
+                np.delete(samples,i,0),
+                np.delete(y,i,1),
+                samples[i:i+1],
+                y[:,i],
+            )
+
+    return errs_drop1,emulated_drop1
+
+def plot_drop1_test(x,y,emulated,errs,ylabel,legend_label):
+    fig=plt.figure(figsize=(10,4))
+    plt.subplot(1,2,1)
+    plt.loglog(x,10**y,label=legend_label)
+    plt.loglog(x,emulated,label='emu',color='k')
+    plt.xlabel('R (Mpc)',size=12)
+    plt.ylabel(ylabel,size=12)
+    plt.legend(loc='best',fontsize=8)
+
+    plt.subplot(1,2,2)
+    plt.semilogx(x,errs,linestyle='dashed',color='k')
+    plt.axhline(-1, label=r'$10\%$ error level', color='red')
+    plt.axhline(-2, label=r'$1\%$ error level', color='orange')
+    plt.axhline(-3, label=r'$0.1\%$ error level', color='green')
+    plt.ylabel(r'log($\%$ error)',size=12)
+    plt.xlabel('R (Mpc)',size=12)
+    plt.legend(loc='best',fontsize=8)
+    return fig
+
+def compute_pm_profiles_CMASS(A_emu,delta_thet,emulator,x):
+    params_plus=[[A_emu+delta_thet]]
+    params_minus=[[A_emu-delta_thet]]
+
+    profile_plus=emulator(params_plus).reshape(len(x))
+    profile_minus=emulator(params_minus).reshape(len(x))
+    return profile_plus,profile_minus

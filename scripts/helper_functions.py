@@ -58,34 +58,6 @@ def choose_vary(vary_str):
     sims=['1P_'+str(n) for n in nums]
     return vary,sims
 
-def choose_ylabel(prof,dimension):
-    if dimension==2:
-        ylabel=ylabel_2d_dict[prof]
-    elif dimension==3:
-        ylabel=ylabel_3d_dict[prof]
-    return ylabel
-
-def load_profiles_3D(usecols,home,suite,sims,snap,mass_str,prof):
-    y=[]
-    errup=[]
-    errlow=[]
-    stddev=[]
-    for s in np.arange(len(sims)):
-        for n in np.arange(len(snap)):
-            for m in np.arange(len(mass)):
-                f=home+suite+'/'+suite+'_'+sims[s]+'_'+snap[n]+'_uw_'+mass_str[m]+'.txt'
-                x,yi,errupi,errlowi,stddevi=np.loadtxt(f,usecols=usecols,unpack=True)
-
-                if prof[:3]=='rho' or prof[:3]=='pth':
-                    yi,errupi,errlowi=cgs_units(prof,yi),cgs_units(prof,errupi),cgs_units(prof,errlowi)
-                y.append(np.log10(yi))
-                errup.append(np.log10(errupi))
-                errlow.append(np.log10(errlowi))
-                stddev.append(stddevi)
-                
-    y,errup,errlow,stddev=np.array(y),np.array(errup),np.array(errlow),np.array(stddev)
-    return x,y,errup,errlow,stddev
-
 def inner_cut(inner_cut,x,arr):
     idx=np.where(x >= inner_cut)
     idx=np.array(idx[0])
@@ -128,7 +100,29 @@ def get_errs_3D(data,emulated):
     diff=(data-emulated)/data
     return (np.log10(np.abs(diff)))
     
-#----------------------------------------------!!!!
+#----------------------------------------------
+#general emulator functions
+def load_profiles_3D(usecols,home,suite,sims,snap,mass_str,prof):
+    y=[]
+    errup=[]
+    errlow=[]
+    stddev=[]
+    for s in np.arange(len(sims)):
+        for n in np.arange(len(snap)):
+            for m in np.arange(len(mass)):
+                f=home+suite+'/'+suite+'_'+sims[s]+'_'+snap[n]+'_uw_'+mass_str[m]+'.txt'
+                x,yi,errupi,errlowi,stddevi=np.loadtxt(f,usecols=usecols,unpack=True)
+
+                if prof[:3]=='rho' or prof[:3]=='pth':
+                    yi,errupi,errlowi=cgs_units(prof,yi),cgs_units(prof,errupi),cgs_units(prof,errlowi)
+                y.append(np.log10(yi))
+                errup.append(np.log10(errupi))
+                errlow.append(np.log10(errlowi))
+                stddev.append(stddevi)
+
+    y,errup,errlow,stddev=np.array(y),np.array(errup),np.array(errlow),np.array(stddev)
+    return x,y,errup,errlow,stddev
+
 #NOTE: this is built-in with RbfInterpolator, make this an option at some point
 def build_emulator_3D(home,suite,vary_str,prof,func_str):
     z=choose_redshift(suite)
@@ -149,6 +143,11 @@ def build_emulator_3D(home,suite,vary_str,prof,func_str):
         num_components=12)
     return samples,x,y,emulator
 
+
+#derivative functions
+def derivative(profile_up,profile_low,delta):
+    deriv=(profile_up-profile_low)/(2.*delta)
+    return deriv
 
 def plot_derivatives(x,yf,yp,ym,yd,ylabel,title,dimension):
     fig=plt.figure(figsize=(6,8))
@@ -208,11 +207,6 @@ def compute_unweighted_profiles_pm(A_emu,delta_thet,z_emu,emulator,x,M):
     profile_minus=emulator(params_minus).reshape(len(x))
     return profile_plus,profile_minus
 
-def derivative(profile_up,profile_low,delta):
-    deriv=(profile_up-profile_low)/(2.*delta)
-    return deriv
-
-
 #CMASS emulator scripts
 def load_profiles_CMASS(usecols,home,suite,sims,snap,prof):
     y=[]
@@ -245,6 +239,16 @@ def build_emulator_CMASS(home,suite,vary_str,prof,func_str):
         num_components=12)
     return samples,x,y,emulator
 
+def compute_pm_profiles_CMASS(A_emu,delta_thet,emulator,x):
+    params_plus=[[A_emu+delta_thet]]
+    params_minus=[[A_emu-delta_thet]]
+
+    profile_plus=emulator(params_plus).reshape(len(x))
+    profile_minus=emulator(params_minus).reshape(len(x))
+    return profile_plus,profile_minus
+
+
+#plotting and testing functions
 def get_errs_drop1(samps,data,true_coord,true_data):
     emulator = ostrich.emulate.PcaEmulator.create_from_data(
         samps,
@@ -295,10 +299,44 @@ def plot_drop1_test(x,y,emulated,errs,ylabel,legend_label):
     plt.legend(loc='best',fontsize=8)
     return fig
 
-def compute_pm_profiles_CMASS(A_emu,delta_thet,emulator,x):
-    params_plus=[[A_emu+delta_thet]]
-    params_minus=[[A_emu-delta_thet]]
+def legend_without_duplicate_labels(ax):
+    handles, labels = ax.get_legend_handles_labels()
+    unique=[(h,l) for i, (h,l) in enumerate(zip(handles,labels)) if l not in labels[:i]]
+    ax.legend(*zip(*unique))
 
-    profile_plus=emulator(params_plus).reshape(len(x))
-    profile_minus=emulator(params_minus).reshape(len(x))
-    return profile_plus,profile_minus
+def plot_drop1_percent_err(x,y,emulated,errs,vary,vary_str,ylabel,title):
+    fig=plt.figure(figsize=(6,8))
+    gs=gridspec.GridSpec(2,1,height_ratios=[2,1])
+    ax0=plt.subplot(gs[0])
+    ax1=plt.subplot(gs[1])
+    plt.setp(ax0.get_xticklabels(),visible=False)
+
+    ax0.set_xscale('log')
+    ax0.set_yscale('log')
+    ax1.set_xscale('log')
+    ax1.set_xlabel('R (Mpc)',size=12)
+
+    cmap=cm.get_cmap('viridis',len(vary))
+    colors=cmap.colors
+    for i in np.arange(len(vary)):
+        yi=10**y[i,:]
+        emulatedi=emulated[i,:]
+        errsi=100.*np.abs(errs[i,:])
+
+        ax0.plot(x,emulatedi,color=colors[i],linestyle='dashed',label='emulated')
+        ax0.plot(x,yi,color=colors[i],label='%s = %.2f'%(vary_str,vary[i]),linewidth=1)
+        ax1.plot(x,errsi,color=colors[i],linewidth=1)
+    ax1.set_ylabel(r'$\%$ error')
+    ax0.set_ylabel(ylabel,size=12)
+
+    legend_without_duplicate_labels(ax0)
+    plt.suptitle(title)
+    gs.tight_layout(fig,rect=[0,0,1,0.97])
+    return fig
+
+def choose_ylabel(prof,dimension):
+    if dimension==2:
+        ylabel=ylabel_2d_dict[prof]
+    elif dimension==3:
+        ylabel=ylabel_3d_dict[prof]
+    return ylabel

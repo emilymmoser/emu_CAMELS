@@ -20,7 +20,7 @@ usecols_dict={'rho_mean':(0,1,2,3,4),'rho_med':(0,5,2,3,4),'pth_mean':(0,6,7,8,9
 usecols_w_dict={'rho_mean':(0,1),'pth_mean':(0,5)}
 ylabel_3d_dict={'rho_mean':r'$\rho_{mean} (g/cm^3)$','rho_med':r'$\rho_{med} (g/cm^3)$','pth_mean':r'$P_{th,mean} (g/cm/s^2)$','pth_med':r'$P_{th,med} (g/cm/s^2)$','metal_mean':r'$\frac{Z_{mean}}{Z_{tot}}$','metal_med':r'$\frac{Z_{med}}{Z_{tot}}$','temp_mean':r'$T_{gas,mean} (K)$','temp_med':r'$T_{gas,med} (K)$'}
 ylabel_2d_dict={'rho_mean':r'$T_{kSZ} (\mu K)$','pth_mean':r'$T_{tSZ} (\mu K)$'}
-
+A_param_latex_dict={'ASN1':r'$A_{SN1}$','ASN2':r'$A_{SN2}$', 'AAGN1':r'$A_{AGN1}$','AAGN2':r'$A_{AGN2}$'}
 
 def cgs_units(prof,arr):
     if prof=='rho_mean' or prof=='rho_med':

@@ -281,7 +281,7 @@ configurations = {
     "eROSITA": {
         "get_profile_function": get_xsb_for_parameter,
         "resolution_arcmin": 0.4,
-        "sensitivity": (1e-3)**2 / num_halos,
+        "sensitivity": (2e-3)**2 / num_halos,
         "color": "blue",
         "show": True,
     },
@@ -290,21 +290,21 @@ configurations = {
         "resolution_arcmin": 1.0,
         "sensitivity": (3.07e-6/Tcmb)**2 / num_halos / 10,
         "color": "orange",
-        "show": True,
+        "show": False,
     },
     "CMB-S4-wide": {
         "get_profile_function": get_y_for_parameter,
         "resolution_arcmin": 0.8,
         "sensitivity": (1.67e-5/Tcmb)**2 / num_halos / 10,
         "color": "green",
-        "show": True,
+        "show": False,
     },
     "CMB-HD": {
         "get_profile_function": get_y_for_parameter,
         "resolution_arcmin": 0.15,
         "sensitivity": (2.7e-6/Tcmb)**2 / num_halos / 10,
         "color": "red",
-        "show": True,
+        "show": False,
     },
 }
 
@@ -351,10 +351,11 @@ for survey in configurations.keys():
             chain,
             labels=feedback_parameters,
             quantiles=[0.16, 0.5, 0.84],
-            show_titles=False, # Show titles with mean and errors on each parameter
+            show_titles=True, # Show titles with mean and errors on each parameter
             plot_datapoints=False, # Show all of the individual data points from the sampled chain
             plot_density=False, # Show 2D histogram-like square bins
             plot_contours=True, # Show sigma contours
+            smooth1d=0.01,
             color=configurations[survey]["color"],
             levels=[0.393], # Motivated by https://corner.readthedocs.io/en/latest/pages/sigmas.html?highlight=levels#a-note-about-sigmas
             label_kwargs={"fontsize": FONTSIZE},
@@ -364,11 +365,12 @@ for survey in configurations.keys():
             chain,
             labels=feedback_parameters,
             quantiles=[0.16, 0.5, 0.84],
-            show_titles=False, # Show titles with mean and errors on each parameter
+            show_titles=True, # Show titles with mean and errors on each parameter
             plot_datapoints=False, # Show all of the individual data points from the sampled chain
             plot_density=False, # Show 2D histogram-like square bins
             plot_contours=True, # Show sigma contours
             fig=fig,
+            smooth1d=0.01,
             color=configurations[survey]["color"],
             levels=[0.393], # Motivated by https://corner.readthedocs.io/en/latest/pages/sigmas.html?highlight=levels#a-note-about-sigmas
             label_kwargs={"fontsize": FONTSIZE},
@@ -389,7 +391,12 @@ fig.legend(handles=legend_elements, loc=(0.7, 0.75), fontsize=FONTSIZE)
 # Get axes, control their xlim and ylim
 axs = fig.get_axes()
 count = 0
-axis_limits = [0, 2]
+if halo_redshift < 0.21:
+    axis_limits = [0, 2]
+elif halo_redshift < 0.4:
+    axis_limits = [-3, 5]
+else:
+    axis_limits = [-20, 22]
 for ax in axs:
     # Do not change ylim on diagonals (histograms)
     column_number = count % len(feedback_parameters)
@@ -400,7 +407,7 @@ for ax in axs:
 
     ax.set_xlim(axis_limits)
 
-fig.suptitle(f"CAMELS ({simulation_suite}), " + "$log_{10} (M_{200c} / M_{\odot}) = $" + f"{log_halo_mass}, z = {halo_redshift}", fontsize=FONTSIZE)
+#fig.suptitle(f"CAMELS ({simulation_suite}), " + "$log_{10} (M_{200c} / M_{\odot}) = $" + f"{log_halo_mass}, z = {halo_redshift}", fontsize=FONTSIZE)
 
 plt.savefig(f"./corner_plot_Mass{log_halo_mass}Redshift{halo_redshift}_{simulation_suite}.pdf")
 

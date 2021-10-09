@@ -226,27 +226,30 @@ profiles_to_plot = {
     "XSB": {
         "ylabel": r"XSB [cts / s / $\mathrm{arcmin}^2$]",
         "get_profile_function": get_xsb_for_parameter,
-        "ylim": [1e-9, 1e-2],
+        "ylim": [2e-8, 2e-2],
         "yerr": eROSITA_sensitivity,
     },
-    "compton-y": {
-        "ylabel": "$y$",
-        "get_profile_function": get_y_for_parameter,
-        "ylim": [1e-6, 1e-3],
-        "yerr": CMB_sensitivity / CMB_resolution,
-    },
+    #"compton-y": {
+    #    "ylabel": "$y$",
+    #    "get_profile_function": get_y_for_parameter,
+    #    "ylim": [1e-6, 1e-3],
+    #    "yerr": CMB_sensitivity / CMB_resolution,
+    #},
 }
 
 # Create plots
 for profile_name, config in profiles_to_plot.items():
     fig, axs = plt.subplots(
-        1,
-        len(feedback_parameters),
-        figsize=(10*len(feedback_parameters), 8),
+        2,
+        2,
+        figsize=(10*2, 8*2),
         sharey=True,
+        sharex=True,
     )
 
-    for ax, feedback_parameter in zip(axs, feedback_parameters):
+    axs_list = np.array(axs).flatten()
+
+    for ax, feedback_parameter in zip(axs_list, feedback_parameters):
         # For XSB, add background horizontal line
         if profile_name == "XSB":
             ax.plot(
@@ -257,32 +260,37 @@ for profile_name, config in profiles_to_plot.items():
                 linewidth=2,
                 c="grey"
             )
-        for param_value in [0.5, 1, 1.5, 2.0]:
-            profile = config["get_profile_function"](feedback_parameter, simulation_suite, param_value, halo_redshift, log_halo_mass)
-            
-            ax.errorbar(
-                RADII,
-                profile,
-                yerr=config["yerr"],
-                label=f"{feedback_parameter} = {param_value}",
-                linewidth=3,
-            )
+        
+        # Obtain profiles for different A parameters
+        minus_param = 0.25
+        plus_param = 1.5
+        fiducial_param = 1.1
+        plus_profile = config["get_profile_function"](feedback_parameter, simulation_suite, plus_param, halo_redshift, log_halo_mass)
+        minus_profile = config["get_profile_function"](feedback_parameter, simulation_suite, minus_param, halo_redshift, log_halo_mass)
+        fiducial_profile = config["get_profile_function"](feedback_parameter, simulation_suite, fiducial_param, halo_redshift, log_halo_mass)
 
-            ax.set_title(feedback_parameter, fontsize=FONTSIZE)
-            ax.set_xlabel(r"$r$ [kpc]", fontsize=FONTSIZE)
+        ax.plot(RADII, fiducial_profile, lw=2, label="Fiducial parameter value")
+        ax.plot(RADII, minus_profile, lw=2, label=f"{minus_param} times fiducial parameter")
+        ax.plot(RADII, plus_profile, lw=2, label=f"{plus_param} times fiducial parameter")
 
-            ax.tick_params(axis="both", which="major", labelsize=FONTSIZE)
+        ax.set_xscale("log")
+        ax.set_yscale("log")
 
-            ax.set_xscale("log")
-            #ax.set_yscale("log")
+        ax.set_xlim([1e1, 2e3])
+        ax.set_ylim(config["ylim"])
 
-            ax.set_xlim([1e1, 1e3])
-            ax.set_ylim(config["ylim"])
+        ax.text(0.3, 0.9, f"Varying parameter: {feedback_parameter}", transform=ax.transAxes, bbox={"facecolor": "white"}, fontsize=FONTSIZE)
 
-            ax.legend(fontsize=FONTSIZE)
-    
-    # Only show ylabel in first plot
-    axs[0].set_ylabel(config["ylabel"], fontsize=FONTSIZE)
+        ax.tick_params(axis="both", which="major", labelsize=FONTSIZE)
+
+
+    fig.supxlabel(r"$r$ [kpc]", fontsize=FONTSIZE)
+    fig.supylabel(config["ylabel"], fontsize=FONTSIZE)
+
+    # Only show legend in first plot
+    axs[0][0].legend(fontsize=FONTSIZE*0.9)
+
+    fig.subplots_adjust(wspace=0, hspace=0)
 
     fig.suptitle(f"CAMELS ({simulation_suite}), " + "$log_{10} (M_{200c} / M_{\odot}) = $" + f"{log_halo_mass}, z = {halo_redshift}", fontsize=FONTSIZE)
 

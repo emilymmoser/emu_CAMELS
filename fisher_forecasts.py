@@ -283,6 +283,7 @@ configurations = {
         "resolution_arcmin": 0.4,
         "sensitivity": (2e-3)**2 / num_halos,
         "color": "blue",
+        "levels": [0.5], # Motivated by https://corner.readthedocs.io/en/latest/pages/sigmas.html?highlight=levels#a-note-about-sigmas
         "show": True,
     },
     "CMB-S4-deep": {
@@ -290,27 +291,30 @@ configurations = {
         "resolution_arcmin": 1.0,
         "sensitivity": (3.07e-6/Tcmb)**2 / num_halos / 10,
         "color": "orange",
-        "show": False,
+        "levels": [0.5],
+        "show": True,
     },
     "CMB-S4-wide": {
         "get_profile_function": get_y_for_parameter,
         "resolution_arcmin": 0.8,
         "sensitivity": (1.67e-5/Tcmb)**2 / num_halos / 10,
         "color": "green",
-        "show": False,
+        "levels": [0.6],
+        "show": True,
     },
     "CMB-HD": {
         "get_profile_function": get_y_for_parameter,
         "resolution_arcmin": 0.15,
         "sensitivity": (2.7e-6/Tcmb)**2 / num_halos / 10,
         "color": "red",
-        "show": False,
+        "levels": [0.5],
+        "show": True,
     },
 }
 
 # Select desired halo parameters and simulation suite
 log_halo_mass = 13
-halo_redshift = 0.1
+halo_redshift = 0.5
 simulation_suite = "IllustrisTNG"
 
 # Plot contours for all surveys
@@ -357,7 +361,7 @@ for survey in configurations.keys():
             plot_contours=True, # Show sigma contours
             smooth1d=0.01,
             color=configurations[survey]["color"],
-            levels=[0.393], # Motivated by https://corner.readthedocs.io/en/latest/pages/sigmas.html?highlight=levels#a-note-about-sigmas
+            levels=configurations[survey]["levels"],
             label_kwargs={"fontsize": FONTSIZE},
         )
     else:
@@ -372,9 +376,12 @@ for survey in configurations.keys():
             fig=fig,
             smooth1d=0.01,
             color=configurations[survey]["color"],
-            levels=[0.393], # Motivated by https://corner.readthedocs.io/en/latest/pages/sigmas.html?highlight=levels#a-note-about-sigmas
+            levels=configurations[survey]["levels"],
             label_kwargs={"fontsize": FONTSIZE},
         )
+
+
+
 
 # Configure legend to show survey names
 legend_elements = [
@@ -404,8 +411,10 @@ for ax in axs:
     count += 1
     if row_number != column_number:
         ax.set_ylim(axis_limits)
-
+        
     ax.set_xlim(axis_limits)
+
+
 
 #fig.suptitle(f"CAMELS ({simulation_suite}), " + "$log_{10} (M_{200c} / M_{\odot}) = $" + f"{log_halo_mass}, z = {halo_redshift}", fontsize=FONTSIZE)
 

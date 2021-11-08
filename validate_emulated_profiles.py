@@ -213,7 +213,7 @@ feedback_parameters = ["AAGN1", "AAGN2", "ASN1", "ASN2"]
 
 # Select desired halo parameters and simulation suite
 log_halo_mass = 13
-halo_redshift = 0.1
+halo_redshift = 2.0
 simulation_suite = "IllustrisTNG"
 
 # Configurations for each profile to plot

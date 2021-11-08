@@ -278,11 +278,35 @@ num_halos = 1000
 
 # Configurations for the different surveys
 configurations = {
-    "eROSITA": {
+    "eFEDS": {
         "get_profile_function": get_xsb_for_parameter,
         "resolution_arcmin": 0.4,
-        "sensitivity": (2e-3)**2 / num_halos,
+        "sensitivity": (2e-3)**2 / num_halos, # Num halos: 1000
         "color": "blue",
+        "levels": [0.5], # Motivated by https://corner.readthedocs.io/en/latest/pages/sigmas.html?highlight=levels#a-note-about-sigmas
+        "show": True,
+    },
+    "eRASS 4": {
+        "get_profile_function": get_xsb_for_parameter,
+        "resolution_arcmin": 0.4,
+        "sensitivity": (2e-3)**2 / (num_halos * np.sqrt(2)), # Num halos: 2000 (hence sqrt(2))
+        "color": "orange",
+        "levels": [0.5], # Motivated by https://corner.readthedocs.io/en/latest/pages/sigmas.html?highlight=levels#a-note-about-sigmas
+        "show": True,
+    },
+    "eRASS 8": {
+        "get_profile_function": get_xsb_for_parameter,
+        "resolution_arcmin": 0.4,
+        "sensitivity": (2e-3)**2 / (num_halos * np.sqrt(5)), # Num halos: 5000 (hence sqrt(5))
+        "color": "green",
+        "levels": [0.5], # Motivated by https://corner.readthedocs.io/en/latest/pages/sigmas.html?highlight=levels#a-note-about-sigmas
+        "show": True,
+    },
+    "eRASS 8 Poles": {
+        "get_profile_function": get_xsb_for_parameter,
+        "resolution_arcmin": 0.4,
+        "sensitivity": (2e-3)**2 / (num_halos * np.sqrt(20)),
+        "color": "red",
         "levels": [0.5], # Motivated by https://corner.readthedocs.io/en/latest/pages/sigmas.html?highlight=levels#a-note-about-sigmas
         "show": True,
     },
@@ -292,7 +316,7 @@ configurations = {
         "sensitivity": (3.07e-6/Tcmb)**2 / num_halos / 10,
         "color": "orange",
         "levels": [0.5],
-        "show": True,
+        "show": False,
     },
     "CMB-S4-wide": {
         "get_profile_function": get_y_for_parameter,
@@ -300,7 +324,7 @@ configurations = {
         "sensitivity": (1.67e-5/Tcmb)**2 / num_halos / 10,
         "color": "green",
         "levels": [0.6],
-        "show": True,
+        "show": False,
     },
     "CMB-HD": {
         "get_profile_function": get_y_for_parameter,
@@ -308,13 +332,13 @@ configurations = {
         "sensitivity": (2.7e-6/Tcmb)**2 / num_halos / 10,
         "color": "red",
         "levels": [0.5],
-        "show": True,
+        "show": False,
     },
 }
 
 # Select desired halo parameters and simulation suite
 log_halo_mass = 13
-halo_redshift = 0.5
+halo_redshift = 0.1
 simulation_suite = "IllustrisTNG"
 
 # Plot contours for all surveys
@@ -322,6 +346,24 @@ fig = None
 
 # Fontsize
 FONTSIZE = 20
+
+# First, create a blank slate corner plot
+chain = np.random.rand(100, len(feedback_parameters))
+
+fig = corner.corner(
+    chain,
+    labels=feedback_parameters,
+    quantiles=[0.16, 0.5, 0.84],
+    show_titles=False, # Show titles with mean and errors on each parameter
+    plot_datapoints=False, # Show all of the individual data points from the sampled chain
+    plot_density=False, # Show 2D histogram-like square bins
+    plot_contours=True, # Show sigma contours
+    color="black",
+    levels=[0.393], # Motivated by https://corner.readthedocs.io/en/latest/pages/sigmas.html?highlight=levels#a-note-about-sigmas
+    label_kwargs={"fontsize": FONTSIZE},
+)
+axs = np.array(fig.axes).reshape((len(feedback_parameters), len(feedback_parameters)))
+
 
 for survey in configurations.keys():
     if not configurations[survey]["show"]:
@@ -379,8 +421,6 @@ for survey in configurations.keys():
             levels=configurations[survey]["levels"],
             label_kwargs={"fontsize": FONTSIZE},
         )
-
-
 
 
 # Configure legend to show survey names

@@ -4,6 +4,7 @@ import ostrich.interpolate
 from astropy import units as u
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
+from matplotlib import cm
 import warnings
 
 ASN1=np.array([0.25000,0.32988,0.43528,0.57435,0.75786,1.00000,1.31951,1.74110,2.29740,3.03143,4.00000])

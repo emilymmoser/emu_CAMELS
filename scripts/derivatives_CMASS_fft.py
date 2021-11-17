@@ -90,4 +90,4 @@ derivatives=np.array(derivatives)
 end=time.time()
 print("it took %.2f minutes to create derivatives array"%((end-start)/60.))
 
-np.savetxt('/home/cemoser/Repositories/emu_CAMELS/derivative_arrays/'+suite+'_'+prof+'_CMASS.txt',derivatives)
+np.savetxt('/home/cemoser/Repositories/emu_CAMELS/derivative_arrays/'+suite+'_'+prof+'_fft_CMASS.txt',derivatives)

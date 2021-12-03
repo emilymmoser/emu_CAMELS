@@ -49,9 +49,9 @@ chain_rho=np.random.multivariate_normal(mean,covariance_rho,size=10000)
 chain_pth=np.random.multivariate_normal(mean,covariance_pth,size=10000)
 chain_combined=np.random.multivariate_normal(mean,covariance_combined,size=10000)
 
-samp_rho=MCSamples(samples=chain_rho,names=vary_arr,labels=vary_arr,label=suite+r' $\rho$') 
-samp_pth=MCSamples(samples=chain_pth,names=vary_arr,labels=vary_arr,label=suite+r' $P_{th}$')
-samp_combined=MCSamples(samples=chain_combined,names=vary_arr,labels=vary_arr,label=r'$\rho + P_{th}$')
+samp_rho=MCSamples(samples=chain_rho,names=vary_arr,labels=vary_arr,label=suite+r' kSZ') 
+samp_pth=MCSamples(samples=chain_pth,names=vary_arr,labels=vary_arr,label=suite+r' tSZ')
+samp_combined=MCSamples(samples=chain_combined,names=vary_arr,labels=vary_arr,label=r'tSZ + kSZ')
 samp_combined.updateSettings({'contours':[0.68]})
 
 

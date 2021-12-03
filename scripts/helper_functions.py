@@ -16,6 +16,7 @@ AAGN1=ASN1
 AAGN2=ASN2
 mass=np.array([11.25,11.75,12.15,12.7])
 mass_str=np.array(['11-11.5','11.5-12','12-12.3','12.3-13.1'])
+mass_range_latex=np.array(['$11 \leq \log_{10}(M_{200c}/M_\odot) \leq 11.5$','$11.5 \leq \log_{10}(M_{200c}/M_\odot) \leq 12$','$12 \leq \log_{10}(M_{200c}/M_\odot) \leq 12.3$','$12.3 \leq \log_{10}(M_{200c}/M_\odot) \leq 13.1$'])
 
 usecols_dict={'rho_mean':(0,1,2,3,4),'rho_med':(0,5,2,3,4),'pth_mean':(0,6,7,8,9),'pth_med':(0,10,7,8,9),'metal_mean':(0,11,12,13,14),'metal_med':(0,15,12,13,14),'temp_mean':(0,16,17,18,19),'temp_med':(0,20,17,18,19)}
 usecols_w_dict={'rho_mean':(0,1),'pth_mean':(0,5)}

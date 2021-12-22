@@ -330,6 +330,12 @@ def plot_drop1_percent_err(x,y,emulated,errs,vary,vary_str,ylabel,title):
         ax1.plot(x,errsi,color=colors[i],linewidth=1)
     ax1.set_ylabel(r'$\%$ error')
     ax0.set_ylabel(ylabel,size=12)
+    ax0.tick_params(which='both',direction='in')
+    ax1.tick_params(which='both',direction='in')
+    plt.setp(ax0.get_xticklabels(),Fontsize=12)
+    plt.setp(ax0.get_yticklabels(),Fontsize=12)
+    plt.setp(ax1.get_xticklabels(),Fontsize=12)
+    plt.setp(ax1.get_yticklabels(),Fontsize=12)
 
     legend_without_duplicate_labels(ax0)
     plt.suptitle(title)

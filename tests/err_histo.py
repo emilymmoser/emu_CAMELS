@@ -14,11 +14,11 @@ import sklearn.gaussian_process.kernels as skgp_kernels
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
-import functions as fs
+import helper_functions as fs
 import sys
 
 
-home='/home/cemoser/Repositories/ostrich/Emulator_profiles/'
+home='/home/cemoser/Repositories/emu_CAMELS/emulator_profiles/'
 suite=sys.argv[1]
 vary_str=sys.argv[2]
 prof=sys.argv[3]
@@ -29,9 +29,7 @@ snap=fs.snap
 z=fs.choose_redshift(suite)
 vary,sims=fs.choose_vary(vary_str)
 samples=fs.cartesian_prod(vary,z,mass) 
-print("samples",np.shape(samples))
 nsamp=samples.shape[0]
-print("nsamp",nsamp)
 
 start=time.time()
 usecols,ylabel=fs.choose_profile(prof)
@@ -99,7 +97,7 @@ for count,val in enumerate(funcs):
     f.write('function %s has mean log(err) %.3f +- %.3f \n'%(funcs_str[count],mean_err,std_err))
     f.close()
 
-    plt.hist(np.log10(abs_errs), histtype='stepfilled', bins=100,alpha=0.6,label=r'%s: $%.3f \pm %.3f$'%(funcs_str[count],mean_err,std_err))
+    plt.hist(log_errs, histtype='stepfilled', bins=100,alpha=0.6,label=r'%s: $%.3f \pm %.3f$'%(funcs_str[count],mean_err,std_err))
     plt.axvline(mean_err,linestyle='dashed')
 plt.axvline(-1, label=r'$10\%$ error level', color='red')
 plt.axvline(-2, label=r'$1\%$ error level', color='orange')

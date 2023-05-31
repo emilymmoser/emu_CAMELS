@@ -14,9 +14,7 @@ snap='024'
 z=fs.choose_redshift(suite)
 z=z[-1]
 
-omegam,sigma8,ASN1,AAGN1,ASN2,AAGN2=np.loadtxt('CosmoAstroSeed_%s.txt'%suite,usecols=(1,2,3,4,5,6),unpack=True)
-
-samples,x,y,emulator=fs.build_emulator_3D(home,suite,prof,func_str,omegam,sigma8,ASN1,AAGN1,ASN2,AAGN2)
+samples,x,y,emulator=fs.build_emulator_3D(home,suite,prof,func_str)
 
 
 om=0.3
@@ -27,4 +25,16 @@ asn2=0.7
 agn2=1.5
 params=[[om,s8,asn1,agn1,asn2,agn2]]
 emulated=emulator(params)
-print(np.shape(emulated))
+
+
+#Saving and loading the emulator
+def save_emulator(filename, radius, emulator):
+    import pickle
+    with open(filename, 'wb') as f:
+        pickle.dump((radius, emulator), f) 
+    
+def load_emulator(filename) :
+    import pickle
+    with open(filename, 'rb') as f:
+        radius, emulator = pickle.load(f) 
+    return radius, emulator

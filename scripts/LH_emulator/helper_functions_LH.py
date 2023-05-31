@@ -10,6 +10,11 @@ import warnings
 
 z_sim=np.array([0.00000,0.04896,0.10033,0.15420,0.21072,0.27000,0.33218,0.39741,0.46584,0.53761])
 z_tng=np.array([0.00000,0.04852,0.10005,0.15412,0.21012,0.26959,0.33198,0.39661,0.46525,0.53726])
+#snap=['033','032','031','030','029','028','027','026','025','024']
+snap = ['024']
+
+mass=np.array([11.25,11.75])
+mass_str=np.array(['11-11.5','11.5-12'])
 
 usecols_dict={'rho_mean':(0,1),'rho_med':(0,5),'pth_mean':(0,6),'pth_med':(0,10),'metal_mean':(0,11),'metal_med':(0,15),'temp_mean':(0,16),'temp_med':(0,20)}
 usecols_w_dict={'rho_mean':(0,1),'pth_mean':(0,5)}
@@ -106,19 +111,20 @@ def load_profiles_3D(usecols,home,suite,sims,snap,mass_str,prof):
     y=np.array(y)
     return x,y
 
-def build_emulator_3D(home,suite,prof,func_str,omegam,sigma8,ASN1,AAGN1,ASN2,AAGN2):
+def build_emulator_3D(home,suite,prof,func_str):
     z=choose_redshift(suite)
-    z=z[-1] #hard-coded for single redshift
+    Sim_name, OmegaM, sigma8, ASN1, AAGN1, ASN2, AAGN2 = set_suite(suite)
     nums=np.linspace(0,999,1000,dtype='int')
     sims=['LH_'+str(i) for i in nums]
 
-    samples=samples_6d(omegam,sigma8,ASN1,AAGN1,ASN2,AAGN2) #this would change for more masses/reds
+    params = np.vstack([OmegaM,sigma8,ASN1,AAGN1,ASN2,AAGN2]).T
+    samples=LH_cartesian_prod(params,z,mass)
     nsamp=samples.shape[0]
 
     usecols=usecols_dict[prof]
     x,y=load_profiles_3D(usecols,home,suite,sims,snap,mass_str,prof)
     y=np.transpose(y)
-
+    
     emulator=ostrich.emulate.PcaEmulator.create_from_data(
         samples,
         y,

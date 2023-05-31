@@ -8,7 +8,6 @@ home='/home/cemoser/Repositories/emu_CAMELS/emulator_profiles/LH_set'
 
 #-----------------------------------input section
 suite=sys.argv[1]
-#suite='IllustrisTNG'
 emulator_type='CMASS' #general or CMASS
   
 nums=np.linspace(0,999,1000,dtype='int')
@@ -16,21 +15,21 @@ simulations=['LH_'+str(n) for n in nums]
 
 if emulator_type=='general':
     #snap_arr=['033','032','031','030','029','028','027','026','025','024']
-    snap_arr=['024'] #single redshift for now
+    snap_arr=['024']
 
     #higher mass bins giving me trouble, just do lower 2 for now
-    mass_str_arr=['11-11.5','11.5-12']#,'12-12.3','12.3-13.1']
-    mh_low_arr=[10**11.,10**11.5+0.1]#,10**12.+0.1]#,10**12.3+0.1]
-    mh_high_arr=[10**11.5,10**12.]#,10**12.3]#,10**13.1]
-    mh_low_pow_arr=[11,11.5]#,12]#,12.3]
-    mh_high_pow_arr=[11.5,12]#,12.3]#,13.1]
+    mass_str_arr=['11-11.5','11.5-12']
+    mh_low_arr=[10**11.,10**11.5+0.1]
+    mh_high_arr=[10**11.5,10**12.]
+    mh_low_pow_arr=[11,11.5]
+    mh_high_pow_arr=[11.5,12]
 
 elif emulator_type=='CMASS':
     snap_arr=['024']
     mass_str_arr=['11.3-13.2'] #13.98, there are no halos above 13.1
     mh_low_arr=[10**11.3] #had 12.12 for 1P
-    mh_high_arr=[10**13.2] #13.98
-    mh_low_pow_arr=[11.3] #12.12
+    mh_high_arr=[10**13.2] 
+    mh_low_pow_arr=[11.3]
     mh_high_pow_arr=[13.2]
 
 #--------------------------------------------------------------- 

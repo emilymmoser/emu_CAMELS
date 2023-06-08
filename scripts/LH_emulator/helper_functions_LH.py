@@ -113,10 +113,20 @@ def load_profiles_3D(usecols,home,suite,sims,snap,mass_str,prof):
 
 def build_emulator_3D(home,suite,prof,func_str):
     z=choose_redshift(suite)
+    #these lines need to be adjusted if you have more than one redshift
+    #but this will make the github version work for the currently uploaded profiles
+    z=np.array([z[-1]])
     Sim_name, OmegaM, sigma8, ASN1, AAGN1, ASN2, AAGN2 = set_suite(suite)
-    nums=np.linspace(0,999,1000,dtype='int')
-    sims=['LH_'+str(i) for i in nums]
+    nums_tot=np.linspace(0,999,1000,dtype='int')
 
+    #remove some sims for radial limits
+    if suite == 'SIMBA':
+        nums_remove = np.array([5,6,16,37,77,90,95,103,127,133,149,156,161,166,168,179,184,222,234,241,257,267,270,295,303,311,313,322,324,325,356,385,389,418,430,460,492,500,522,531,605,615,616,622,625,629,647,659,678,680,692,723,735,742,766,776,779,783,802,811,830,834,880,897,930,936,943,958,970,977])
+    if suite == 'IllustrisTNG':
+        nums_remove = np.array([43, 51, 75, 102, 111, 122, 123, 138, 145, 183, 207, 225, 233, 263, 298, 344, 372, 397, 439, 449, 453, 477, 484, 492, 505, 512, 539, 577, 584, 607, 611, 617, 646, 661, 675,713, 719, 726, 728, 743, 800, 801, 837, 841, 888, 898, 914, 921, 942, 948, 964])
+
+    nums = [n for n in nums_tot if n not in nums_remove]
+    sims=['LH_'+str(i) for i in nums]
     params = np.vstack([OmegaM,sigma8,ASN1,AAGN1,ASN2,AAGN2]).T
     samples=LH_cartesian_prod(params,z,mass)
     nsamp=samples.shape[0]

@@ -17,12 +17,14 @@ numpy, scipy
 ostrich - should download its own dependencies when cloning the repository
 
 ## Examples and Tests:
+The redshifts (and corresponding snapshots) and mass ranges are defined at the beginning of scripts/helper_functions* for both emulator types. Adjust accordingly for the values you want. In general, there are two different types of emulators: general and weighted (CMASS). The general emulators take in an average unweighted profile for each mass bin, seen by the "uw" filenames in the load_profiles functions. The weighted emulator (CMASS) takes in an average profile for the entire mass range weighted by the CMASS mass distribution, seen by the "w" filenames. 
 
-Run the example script for the 1P emulator, scripts/1P_emulator/build_emulator_example.py
+Run the example script for the general 1P emulator, scripts/1P_emulator/build_emulator_example.py
 Specify the suite, feedback parameter, and profile type in lines 3-6.
 
-Run the example script for the LH emulator, scripts/LH_emulator/build_emulator_LH.py. 
-And for the CMASS-specific LH emulator, scripts/LH_emulator/build_emulator_LH_CMASS.py
+Run the example script for the general LH emulator, scripts/LH_emulator/build_emulator_LH.py. NOTE: I have only uploaded the profiles for a single snapshot (024) because there are a lot. To add other redshifts, you will need to run scripts/LH_emulator/extract_from_hdf5.py, and uncomment line 13 in scripts/LH_emulator/helper_functions_LH.py to use all of the snapshots rather than only '024'.  
+
+And for the CMASS-specific LH emulator, scripts/LH_emulator/build_emulator_LH_CMASS.py. This is built off profiles weighted by the CMASS mass distribution, only for snapshot 024.  
 
 The accuracy of the emulators can be plotted in the tests/radial_errors_general_emu.py (for 1P) and tests/drop1_test_LH_emulator.py (for LH) scripts.
 

@@ -41,7 +41,7 @@ emu_samples,x,y,emulator=mcmc_functions_LH.build_emulator(home_mop,suite,prof)
 #-----------------------------------------------------
 
 chains_all,chains_all_reshaped,chains_all_reshaped_cut=mcmc_functions_LH.load_chains(home_chains,suite,prof,identity,nwalkers,itr,ndim,cut)
-#np.savetxt(home_chains+'all_chains_'+suite+'_'+prof+'_'+identity+'.txt',chains_all_reshaped_cut)
+np.savetxt(home_chains+'all_chains_'+suite+'_'+prof+'_'+identity+'.txt',chains_all_reshaped_cut)
 
 samples=chains_all_reshaped
 test=samples.reshape((number_runs*nwalkers,itr,ndim))
@@ -80,7 +80,7 @@ g.settings.figure_legend_frame=False
 g.settings.title_limit_fontsize=14
 g.settings.title_limit_labels=False
 g.triangle_plot([samp],filled=True,title_limit=1)
-#plt.savefig(home_plots+'corner_'+suite+'_'+prof+'_'+identity+'.png',bbox_inches='tight')
+plt.savefig(home_plots+'corner_'+suite+'_'+prof+'_'+identity+'.png',bbox_inches='tight')
 
 asn1_mcmc,agn1_mcmc,asn2_mcmc,agn2_mcmc = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]),zip(*np.percentile(chains_all_reshaped_cut, [16, 50, 84],axis=0)))
 theta_fit=[asn1_mcmc[0],agn1_mcmc[0],asn2_mcmc[0],agn2_mcmc[0]]
@@ -122,7 +122,7 @@ fit_best*=mcmc_functions_LH.rescaling_factor_dict[prof]
 if prof == 'pth_mean':
     fit_best = mcmc_functions_LH.add_dust(fit_best)
 
-np.savetxt(home_plots+'fit_file_logprob_'+suite+'_'+prof+'_'+identity+'_update_dust.txt',np.c_[thta_act,fit_best*sr2sqarcmin,fit_50,fit_84,fit_16],header='theta(arcmin),best SZ fit(muK*sqarcmin,max logprob),median fit, 84th percentile,16th percentile \n best fit params: %.2f,%.2f,%.2f,%.2f'%(logprob_sample_best[2],logprob_sample_best[3],logprob_sample_best[4],logprob_sample_best[5]))
+np.savetxt(home_plots+'fit_file_logprob_'+suite+'_'+prof+'_'+identity+'.txt',np.c_[thta_act,fit_best*sr2sqarcmin,fit_50,fit_84,fit_16],header='theta(arcmin),best SZ fit(muK*sqarcmin,max logprob),median fit, 84th percentile,16th percentile \n best fit params: %.2f,%.2f,%.2f,%.2f'%(logprob_sample_best[2],logprob_sample_best[3],logprob_sample_best[4],logprob_sample_best[5]))
 
 
 plt.figure()
@@ -144,5 +144,5 @@ plt.fill_between(thta_act,fit_84,fit_16,facecolor='mediumblue',alpha=0.3)
 plt.xlabel(r'$\theta$ (arcmin)')
 plt.legend()
 plt.title(suite,y=0.99)
-plt.savefig(home_plots+'fit_logprob_'+suite+'_'+prof+'_'+identity+'_update_dust.png',bbox_inches='tight')
+plt.savefig(home_plots+'fit_logprob_'+suite+'_'+prof+'_'+identity+'.png',bbox_inches='tight')
 plt.close()
